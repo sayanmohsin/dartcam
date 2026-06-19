@@ -21,15 +21,14 @@ class DartboardConstants {
   static const int defaultGameType = 501;
   static const int maxDartsPerTurn = 3;
 
-  // Board detection thresholds
-  static const int boardBrightnessThreshold = 80;
-  static const double minBoardAreaRatio = 0.05;
-  static const int minBoardRadiusPx = 50;
-  static const int boardEdgeDropThreshold = 25;
+  // Board detection thresholds (relaxed for various lighting)
+  static const int boardBrightnessThreshold = 60;
+  static const double minBoardAreaRatio = 0.02;
+  static const int minBoardRadiusPx = 30;
+  static const int boardEdgeDropThreshold = 15;
 
   // Dart detection thresholds
-  static const int imageDiffThreshold = 50;
-  static const int minBlobArea = 50;
+  static const int imageDiffThreshold = 40;
+  static const int minBlobArea = 20;
   static const int maxDetectedBlobs = 3;
-  static const double minDartAspectRatio = 2.0;
 }

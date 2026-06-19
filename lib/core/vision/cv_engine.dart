@@ -65,12 +65,7 @@ class PureDartCVEngine {
     final blobs = _findBlobs(diffImage);
 
     final validatedBlobs = blobs.where((blob) {
-      if (blob.area < DartboardConstants.minBlobArea) return false;
-      if (blob.boundsWidth < 1 || blob.boundsHeight < 1) return false;
-
-      final aspect = max(blob.boundsWidth, blob.boundsHeight) /
-          min(blob.boundsWidth, blob.boundsHeight);
-      return aspect >= DartboardConstants.minDartAspectRatio;
+      return blob.area >= DartboardConstants.minBlobArea;
     }).toList();
 
     validatedBlobs.sort((a, b) => b.area.compareTo(a.area));

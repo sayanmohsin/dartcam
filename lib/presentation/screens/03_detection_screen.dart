@@ -101,12 +101,7 @@ List<DetectedPoint> _processImagesPure(
   final blobs = _findBlobsPure(diffPixels, width, height);
 
   final validated = blobs.where((b) {
-    if (b['area']! < DartboardConstants.minBlobArea) return false;
-    final bw = b['bw']!;
-    final bh = b['bh']!;
-    if (bw < 1 || bh < 1) return false;
-    final aspect = bw > bh ? bw / bh : bh / bw;
-    return aspect >= DartboardConstants.minDartAspectRatio;
+    return b['area']! >= DartboardConstants.minBlobArea;
   }).toList();
 
   validated.sort((a, b) => b['area']!.compareTo(a['area']!));
