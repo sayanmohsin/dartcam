@@ -2,14 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import '../widgets/score_badge.dart' hide kNeonOrange, kNeonOrangeGlow;
 import '../widgets/manual_picker_grid.dart' hide kNeonOrange, kNeonOrangeGlow;
 import '../../core/vision/cv_engine.dart';
-import '../../core/vision/board_detector.dart';
 import '../../core/vision/scoring_geometry.dart';
-import '../../core/constants/dartboard_constants.dart';
 import '../../data/state/match_state_manager.dart';
 import '../../main.dart';
 
@@ -18,76 +15,34 @@ class _DetectionInput {
   final Uint8List? emptyBytes;
   final String emptyBoardPath;
   final String shotPath;
-  final Uint8List? referenceBytes;
 
   const _DetectionInput({
     required this.shotBytes,
     this.emptyBytes,
     required this.emptyBoardPath,
     required this.shotPath,
-    this.referenceBytes,
   });
 }
 
-class _DetectionResult {
-  final BoardCircle board;
-  final List<DetectedPoint> points;
-
-  const _DetectionResult({required this.board, required this.points});
-}
-
-_DetectionResult _processDartDetection(_DetectionInput input) {
-  final shotImage = img.decodeImage(input.shotBytes);
-  if (shotImage == null) {
-    return _DetectionResult(
-      board: BoardCircle(
-        centerX: 0, centerY: 0, radius: 1,
-        tier: BoardDetectionTier.centerFallback,
-      ),
-      points: [],
-    );
+List<DetectedPoint> _processDartDetection(_DetectionInput input) {
+  if (!kIsWeb) {
+    return CVEngine.extractDartCentroids(
+        input.emptyBoardPath, input.shotPath);
   }
+
+  final shotImage = img.decodeImage(input.shotBytes);
+  if (shotImage == null) return [];
 
   img.Image? emptyImage;
   if (input.emptyBytes != null) {
     emptyImage = img.decodeImage(input.emptyBytes!);
   }
+  if (emptyImage == null) return [];
 
-  if (emptyImage == null && !kIsWeb) {
-    final emptyBytes = File(input.emptyBoardPath).readAsBytesSync();
-    emptyImage = img.decodeImage(emptyBytes);
-  }
-
-  if (emptyImage == null) {
-    return _DetectionResult(
-      board: BoardCircle(
-        centerX: shotImage.width / 2, centerY: shotImage.height / 2,
-        radius: shotImage.width * 0.35,
-        tier: BoardDetectionTier.centerFallback,
-      ),
-      points: [],
-    );
-  }
-
-  final board = BoardDetector.detectBoard(
-    emptyImage,
-    referenceBytes: input.referenceBytes,
-  );
-
-  List<DetectedPoint> points;
-  if (!kIsWeb) {
-    points = CVEngine.extractDartCentroids(
-        input.emptyBoardPath, input.shotPath,
-        board: board);
-  } else {
-    points = _processImagesPure(emptyImage, shotImage, board);
-  }
-
-  return _DetectionResult(board: board, points: points);
+  return _processImagesPure(emptyImage, shotImage);
 }
 
-List<DetectedPoint> _processImagesPure(
-    img.Image emptyImg, img.Image shotImg, BoardCircle board) {
+List<DetectedPoint> _processImagesPure(img.Image emptyImg, img.Image shotImg) {
   final width =
       emptyImg.width < shotImg.width ? emptyImg.width : shotImg.width;
   final height =
@@ -97,8 +52,6 @@ List<DetectedPoint> _processImagesPure(
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      if (!board.contains(x.toDouble(), y.toDouble())) continue;
-
       final emptyPixel = emptyImg.getPixel(x, y);
       final shotPixel = shotImg.getPixel(x, y);
 
@@ -107,7 +60,7 @@ List<DetectedPoint> _processImagesPure(
       final db = (shotPixel.b.toInt() - emptyPixel.b.toInt()).abs();
       final gray = ((dr + dg + db) / 3).toInt();
 
-      if (gray > DartboardConstants.imageDiffThreshold) {
+      if (gray > 80) {
         diffPixels[y * width + x] = gray;
       }
     }
@@ -116,14 +69,9 @@ List<DetectedPoint> _processImagesPure(
   if (diffPixels.isEmpty) return [];
 
   final blobs = _findBlobsPure(diffPixels, width, height);
+  blobs.sort((a, b) => b['area']!.compareTo(a['area']!));
 
-  final validated = blobs.where((b) {
-    return b['area']! >= DartboardConstants.minBlobArea;
-  }).toList();
-
-  validated.sort((a, b) => b['area']!.compareTo(a['area']!));
-
-  return validated.take(3).map((blob) {
+  return blobs.take(3).map((blob) {
     return DetectedPoint(
       x: blob['cx']!,
       y: blob['cy']!,
@@ -145,10 +93,6 @@ List<Map<String, double>> _findBlobsPure(
 
     double sumX = 0, sumY = 0;
     int area = 0;
-    int minX = entry.key % width,
-        maxX = entry.key % width,
-        minY = entry.key ~/ width,
-        maxY = entry.key ~/ width;
 
     while (queue.isNotEmpty) {
       final idx = queue.removeLast();
@@ -158,40 +102,25 @@ List<Map<String, double>> _findBlobsPure(
       sumY += y;
       area++;
 
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-
-      for (final offset in [
-        -1, 1, -width, width, -width - 1, -width + 1, width - 1, width + 1
-      ]) {
+      for (final offset in [-1, 1, -width, width]) {
         final neighbor = idx + offset;
         if (neighbor < 0 || neighbor >= width * height) continue;
         if (visited.contains(neighbor)) continue;
         if (!pixels.containsKey(neighbor)) continue;
 
-        final nx = neighbor % width;
         final ny = neighbor ~/ width;
         if ((offset == -1 || offset == 1) && ny != y) continue;
-        if ((offset.abs() != width) &&
-            (offset.abs() != 1) &&
-            (nx - x).abs() > 1) {
-          continue;
-        }
 
         visited.add(neighbor);
         queue.add(neighbor);
       }
     }
 
-    if (area > 0) {
+    if (area >= 200) {
       blobs.add({
         'cx': sumX / area,
         'cy': sumY / area,
         'area': area.toDouble(),
-        'bw': (maxX - minX + 1).toDouble(),
-        'bh': (maxY - minY + 1).toDouble(),
       });
     }
   }
@@ -234,17 +163,15 @@ class _DetectionScreenState extends State<DetectionScreen>
   Uint8List? _shotBytes;
   bool _isConfirmed = false;
   bool _noDartsDetected = false;
-  bool _boardApproximate = false;
 
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
   int _loadingStep = 0;
 
   static const _loadingSteps = [
-    'Detecting board...',
-    'Loading images...',
-    'Analyzing dart positions...',
-    'Scoring detected darts...',
+    'Loading image...',
+    'Analyzing...',
+    'Scoring...',
   ];
 
   @override
@@ -329,32 +256,19 @@ class _DetectionScreenState extends State<DetectionScreen>
       await _waitForMinDuration(loadStart, 600);
 
       _setStep(1);
-      final decodeStart = DateTime.now();
-      await _waitForMinDuration(decodeStart, 400);
-
-      _setStep(2);
-
-      Uint8List? referenceBytes;
-      try {
-        final data = await rootBundle.load('assets/reference_board.jpg');
-        referenceBytes = data.buffer.asUint8List();
-      } catch (_) {}
+      final analyzeStart = DateTime.now();
 
       final input = _DetectionInput(
         shotBytes: shotBytes,
         emptyBytes: emptyBytes,
         emptyBoardPath: widget.emptyBoardPath,
         shotPath: widget.shotPath,
-        referenceBytes: referenceBytes,
       );
 
-      final result = await compute(_processDartDetection, input);
+      final points = await compute(_processDartDetection, input);
+      await _waitForMinDuration(analyzeStart, 500);
 
-      if (result.board.tier == BoardDetectionTier.centerFallback) {
-        _boardApproximate = true;
-      }
-
-      if (result.points.isEmpty) {
+      if (points.isEmpty) {
         setState(() {
           _noDartsDetected = true;
           _isProcessing = false;
@@ -362,12 +276,13 @@ class _DetectionScreenState extends State<DetectionScreen>
         return;
       }
 
-      _setStep(3);
+      _setStep(2);
       final scoreStart = DateTime.now();
 
       final scoredDarts = ScoringGeometry.scoreAllDarts(
-        result.points,
-        result.board,
+        points,
+        shotImage.width.toDouble(),
+        shotImage.height.toDouble(),
       );
 
       await _waitForMinDuration(scoreStart, 400);
@@ -537,8 +452,7 @@ class _DetectionScreenState extends State<DetectionScreen>
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                       child: GestureDetector(
-                        onTap:
-                            _isProcessing ? null : () => _addDart(index),
+                        onTap: _isProcessing ? null : () => _addDart(index),
                         child: Container(
                           width: 80,
                           height: 80,
@@ -577,14 +491,6 @@ class _DetectionScreenState extends State<DetectionScreen>
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (_boardApproximate) ...[
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Board not clearly detected — scores may be approximate',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.orange, fontSize: 12),
-                  ),
-                ],
               ],
               const Spacer(),
               if (_noDartsDetected || _error != null)

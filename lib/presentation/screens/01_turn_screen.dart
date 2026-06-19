@@ -87,7 +87,7 @@ class TurnScreen extends StatelessWidget {
               style: const TextStyle(color: Colors.white54, fontSize: 14),
             ),
           ],
-          SizedBox(height: MediaQuery.of(context).size.height * 0.06),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.04),
           if (stateManager.canUndo)
             GestureDetector(
               onTap: () {
@@ -100,7 +100,7 @@ class TurnScreen extends StatelessWidget {
                 );
               },
               child: const Padding(
-                padding: EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.only(bottom: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -114,38 +114,50 @@ class TurnScreen extends StatelessWidget {
                 ),
               ),
             ),
-          GestureDetector(
-            onTap: isCapturing ? null : onSnapShot,
-            child: Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isCapturing ? Colors.grey[700] : kNeonOrange,
-                boxShadow: isCapturing
-                    ? []
-                    : [
-                        BoxShadow(
-                          color: kNeonOrangeGlow.withValues(alpha: 0.4),
-                          blurRadius: 24,
-                          spreadRadius: 2,
-                        ),
-                      ],
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: isCapturing ? null : onManualScore,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kNeonOrange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: isCapturing
-                  ? const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                    )
-                  : const Icon(Icons.camera_alt, color: Colors.white, size: 32),
+              child: const Text(
+                'ENTER SCORE',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           GestureDetector(
-            onTap: isCapturing ? null : onManualScore,
-            child: const Text(
-              'or type score',
-              style: TextStyle(color: Colors.white38, fontSize: 14),
+            onTap: isCapturing ? null : onSnapShot,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.camera_alt, color: Colors.white38, size: 16),
+                const SizedBox(width: 6),
+                isCapturing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          color: Colors.white38,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'or capture with camera',
+                        style: TextStyle(color: Colors.white38, fontSize: 14),
+                      ),
+              ],
             ),
           ),
           const SizedBox(height: 32),

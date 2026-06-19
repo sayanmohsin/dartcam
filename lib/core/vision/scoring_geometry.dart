@@ -1,7 +1,6 @@
 import 'dart:math';
 import '../constants/dartboard_constants.dart';
 import 'cv_engine.dart';
-import 'board_detector.dart';
 
 class ScoredDart {
   final int score;
@@ -76,15 +75,16 @@ class ScoringGeometry {
 
   static List<ScoredDart> scoreAllDarts(
     List<DetectedPoint> points,
-    BoardCircle board,
+    double imageWidth,
+    double imageHeight,
   ) {
-    final pixelsPerMm = board.radius / DartboardConstants.boardRadius;
+    final centerX = imageWidth / 2;
+    final centerY = imageHeight / 2;
+    final boardRadiusPx = min(imageWidth, imageHeight) / 2;
+    final pixelsPerMm = boardRadiusPx / DartboardConstants.boardRadius;
 
-    final validPoints = points.where((p) => board.contains(p.x, p.y)).toList();
-
-    return validPoints.map((point) {
-      return pixelToScore(
-          point, board.centerX, board.centerY, pixelsPerMm);
+    return points.map((point) {
+      return pixelToScore(point, centerX, centerY, pixelsPerMm);
     }).toList();
   }
 }

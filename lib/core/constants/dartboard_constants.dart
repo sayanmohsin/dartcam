@@ -21,33 +21,8 @@ class DartboardConstants {
   static const int defaultGameType = 501;
   static const int maxDartsPerTurn = 3;
 
-  // Board detection — color-based (Tier 1)
-  static const int greenHueMin = 70;
-  static const int greenHueMax = 150;
-  static const int greenSatMin = 15;
-  static const int greenValMin = 10;
-  static const int greenValMax = 55;
-
-  static const int redHueMax = 20;
-  static const int redHueMin = 340;
-  static const int redSatMin = 25;
-  static const int redValMin = 10;
-  static const int redValMax = 55;
-
-  static const double minBoardColorRatio = 0.015;
-  static const double centerSampleRatio = 0.4;
-
-  // Board detection — brightness fallback (Tier 2)
-  static const int boardBrightnessThreshold = 60;
-  static const double minBoardAreaRatio = 0.02;
-  static const int minBoardRadiusPx = 30;
-  static const int boardEdgeDropThreshold = 15;
-
-  // Board detection — center fallback (Tier 3)
-  static const double centerFallbackRadiusRatio = 0.35;
-
-  // Dart detection thresholds
-  static const int imageDiffThreshold = 40;
-  static const int minBlobArea = 15;
+  // Dart detection (conservative — only catches clear darts)
+  static const int imageDiffThreshold = 80;
+  static const int minBlobArea = 200;
   static const int maxDetectedBlobs = 3;
 }
