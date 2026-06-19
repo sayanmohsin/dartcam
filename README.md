@@ -17,6 +17,14 @@
 
 ---
 
+## Download
+
+> **Latest:** [v0.1.0 Beta](https://github.com/sayanmohsin/dartcam/releases/tag/v0.1.0-beta) — download the APK and install on your Android device.
+
+APK location: `build/app/outputs/flutter-apk/app-debug.apk`
+
+---
+
 ## What is DartCam?
 
 DartCam is a clean, no-fuss dart scoring app. No accounts, no cloud, no distractions — just you, the board, and the game.
