@@ -131,239 +131,234 @@ class _SetupScreenState extends State<SetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kDarkBg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // App branding
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 28),
-                child: Column(
-                  children: [
-                    Text(
-                      'DARTCAM',
-                      style: TextStyle(
-                        color: kNeonOrange,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 6,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Snap. Score. Win.',
-                      style: TextStyle(
-                        color: Colors.white38,
-                        fontSize: 12,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Game type selector
-            const Text(
-              'Game Type',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: _gameTypeOptions.map((type) {
-                final isSelected = type == _selectedGameType;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: GestureDetector(
-                      onTap: () => setState(() => _selectedGameType = type),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: isSelected ? kNeonOrange : kInputBg,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isSelected ? kNeonOrangeGlow : Colors.grey[700]!,
-                            width: isSelected ? 2 : 1,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '$type',
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.white70,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-            // Rules card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: kCardBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[800]!, width: 1),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 28),
+                  child: Column(
                     children: [
-                      Icon(Icons.rule, color: kNeonOrange, size: 20),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'RULES',
+                      Text(
+                        'DARTCAM',
                         style: TextStyle(
                           color: kNeonOrange,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 6,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Snap. Score. Win.',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 12,
                           letterSpacing: 2,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  _ruleItem('Start at $_selectedGameType points'),
-                  _ruleItem('Each player throws up to 3 darts per turn'),
-                  _ruleItem('Must finish on a double or bullseye'),
-                  _ruleItem('Going below 0 is a bust'),
-                  _ruleItem('Finishing on 1 is a bust'),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Players',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              const Text(
+                'Game Type',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
-                Text(
-                  '${_controllers.length} of 8',
-                  style: const TextStyle(color: Colors.white54, fontSize: 14),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _controllers.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: kNeonOrange,
-                        child: Text(
-                          '${index + 1}',
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _controllers[index],
-                          style: const TextStyle(color: Colors.white),
-                          textCapitalization: TextCapitalization.words,
-                          decoration: InputDecoration(
-                            hintText: 'Player ${index + 1} name',
-                            hintStyle: TextStyle(color: Colors.grey[600]),
-                            filled: true,
-                            fillColor: kInputBg,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: _gameTypeOptions.map((type) {
+                  final isSelected = type == _selectedGameType;
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedGameType = type),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isSelected ? kNeonOrange : kInputBg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected ? kNeonOrangeGlow : Colors.grey[700]!,
+                              width: isSelected ? 2 : 1,
                             ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: kNeonOrange),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$type',
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.white70,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                      if (_controllers.length > 2)
-                        IconButton(
-                          onPressed: () => _removePlayer(index),
-                          icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            TextButton.icon(
-              onPressed: _addPlayer,
-              icon: const Icon(Icons.add, color: kNeonOrange),
-              label: const Text('Add Player', style: TextStyle(color: kNeonOrange)),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _startGame,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kNeonOrange,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: kCardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[800]!, width: 1),
                 ),
-                child: const Text(
-                  'START MATCH',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.rule, color: kNeonOrange, size: 20),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'RULES',
+                          style: TextStyle(
+                            color: kNeonOrange,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _ruleItem('Start at $_selectedGameType points'),
+                    _ruleItem('Each player throws up to 3 darts per turn'),
+                    _ruleItem('Must finish on a double or bullseye'),
+                    _ruleItem('Going below 0 is a bust'),
+                    _ruleItem('Finishing on 1 is a bust'),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AboutScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.info_outline, color: Colors.white24, size: 20),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Players',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${_controllers.length} of 8',
+                    style: const TextStyle(color: Colors.white54, fontSize: 14),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _controllers.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: kNeonOrange,
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _controllers[index],
+                            style: const TextStyle(color: Colors.white),
+                            textCapitalization: TextCapitalization.words,
+                            decoration: InputDecoration(
+                              hintText: 'Player ${index + 1} name',
+                              hintStyle: TextStyle(color: Colors.grey[600]),
+                              filled: true,
+                              fillColor: kInputBg,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: kNeonOrange),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (_controllers.length > 2)
+                          IconButton(
+                            onPressed: () => _removePlayer(index),
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              TextButton.icon(
+                onPressed: _addPlayer,
+                icon: const Icon(Icons.add, color: kNeonOrange),
+                label: const Text('Add Player', style: TextStyle(color: kNeonOrange)),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _startGame,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kNeonOrange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text(
+                    'START MATCH',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
+                  ),
                 ),
-                const SizedBox(width: 4),
-                const Text(
-                  'v0.1.0 Beta',
-                  style: TextStyle(color: Colors.white24, fontSize: 12),
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AboutScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.info_outline, color: Colors.white24, size: 20),
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'v0.1.0 Beta',
+                    style: TextStyle(color: Colors.white24, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
