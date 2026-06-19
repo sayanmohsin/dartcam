@@ -74,3 +74,9 @@ app.*.map.json
 # Environment
 .env
 .env.*
+
+# APK / Build outputs
+*.apk
+*.aab
+*.ipa
+*.app
