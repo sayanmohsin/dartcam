@@ -1,12 +1,11 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'presentation/screens/00_splash_screen.dart';
 import 'presentation/screens/01_turn_screen.dart';
 import 'presentation/screens/03_detection_screen.dart';
 import 'presentation/screens/04_about_screen.dart';
+import 'presentation/screens/camera_screen.dart';
 import 'presentation/widgets/manual_picker_grid.dart';
 import 'core/vision/scoring_geometry.dart';
 import 'data/state/match_state_manager.dart';
@@ -385,140 +384,6 @@ class _SetupScreenState extends State<SetupScreen> {
 
 // ---------- GAME SCREEN ----------
 
-// ---------- BOARD GUIDE SCREEN ----------
-
-class _BoardGuideScreen extends StatelessWidget {
-  const _BoardGuideScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 260,
-                    height: 260,
-                    child: CustomPaint(
-                      painter: _BoardGuidePainter(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Position the dartboard here',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Make sure the whole board is visible',
-                    style: TextStyle(color: Colors.white54, fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              bottom: 32,
-              left: 24,
-              right: 24,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        side: const BorderSide(color: Colors.white30),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kNeonOrange,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text(
-                        'Take Photo',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BoardGuidePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 10;
-
-    final dashPaint = Paint()
-      ..color = kNeonOrange.withValues(alpha: 0.7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    const dashCount = 36;
-    const dashAngle = 2 * 3.14159 / dashCount;
-    const gapRatio = 0.4;
-
-    for (int i = 0; i < dashCount; i++) {
-      final startAngle = i * dashAngle;
-      final endAngle = startAngle + dashAngle * (1 - gapRatio);
-
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        endAngle - startAngle,
-        false,
-        dashPaint,
-      );
-    }
-
-    final crossPaint = Paint()
-      ..color = Colors.white24
-      ..strokeWidth = 1;
-
-    canvas.drawLine(
-      Offset(center.dx - 12, center.dy),
-      Offset(center.dx + 12, center.dy),
-      crossPaint,
-    );
-    canvas.drawLine(
-      Offset(center.dx, center.dy - 12),
-      Offset(center.dx, center.dy + 12),
-      crossPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 // ---------- GAME SCREEN ----------
 
 class GameScreen extends StatefulWidget {
@@ -529,62 +394,34 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  final ImagePicker _picker = ImagePicker();
   bool _isCapturing = false;
 
   Future<void> _onThrowDarts() async {
     if (_isCapturing) return;
-
-    final shouldCapture = await Navigator.of(context).push<bool>(
-      PageRouteBuilder(
-        pageBuilder: (context, _, _) => const _BoardGuideScreen(),
-        transitionDuration: const Duration(milliseconds: 200),
-        transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
-
-    if (shouldCapture != true || !mounted) return;
-
     setState(() => _isCapturing = true);
 
     try {
-      final XFile? photo = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.rear,
+      final String? imagePath = await Navigator.of(context).push<String>(
+        MaterialPageRoute(builder: (_) => const CameraScreen()),
       );
 
-      if (photo == null) {
-        if (mounted) setState(() => _isCapturing = false);
+      if (imagePath == null || !mounted) {
+        setState(() => _isCapturing = false);
         return;
       }
 
       String emptyBoardPath;
       String shotPath;
 
-      if (kIsWeb) {
-        final bytes = await photo.readAsBytes();
-        const emptyKey = 'empty_board_base.png';
-        const shotKey = 'active_turn_shot.png';
+      final directory = await getApplicationDocumentsDirectory();
+      emptyBoardPath = '${directory.path}/empty_board_base.png';
+      shotPath = '${directory.path}/active_turn_shot.png';
 
-        DetectionScreen.setWebImage(shotKey, bytes);
-        if (!DetectionScreen.hasWebImage(emptyKey)) {
-          DetectionScreen.setWebImage(emptyKey, bytes);
-        }
-        emptyBoardPath = emptyKey;
-        shotPath = shotKey;
-      } else {
-        final directory = await getApplicationDocumentsDirectory();
-        emptyBoardPath = '${directory.path}/empty_board_base.png';
-        shotPath = '${directory.path}/active_turn_shot.png';
-
-        final emptyFile = File(emptyBoardPath);
-        if (!await emptyFile.exists()) {
-          await File(photo.path).copy(emptyBoardPath);
-        }
-        await File(photo.path).copy(shotPath);
+      final emptyFile = File(emptyBoardPath);
+      if (!await emptyFile.exists()) {
+        await File(imagePath).copy(emptyBoardPath);
       }
+      await File(imagePath).copy(shotPath);
 
       if (!mounted) return;
       setState(() => _isCapturing = false);

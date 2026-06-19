@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import '../widgets/score_badge.dart' hide kNeonOrange, kNeonOrangeGlow;
 import '../widgets/manual_picker_grid.dart' hide kNeonOrange, kNeonOrangeGlow;
@@ -17,17 +18,19 @@ class _DetectionInput {
   final Uint8List? emptyBytes;
   final String emptyBoardPath;
   final String shotPath;
+  final Uint8List? referenceBytes;
 
   const _DetectionInput({
     required this.shotBytes,
     this.emptyBytes,
     required this.emptyBoardPath,
     required this.shotPath,
+    this.referenceBytes,
   });
 }
 
 class _DetectionResult {
-  final BoardCircle? board;
+  final BoardCircle board;
   final List<DetectedPoint> points;
 
   const _DetectionResult({required this.board, required this.points});
@@ -35,7 +38,15 @@ class _DetectionResult {
 
 _DetectionResult _processDartDetection(_DetectionInput input) {
   final shotImage = img.decodeImage(input.shotBytes);
-  if (shotImage == null) return const _DetectionResult(board: null, points: []);
+  if (shotImage == null) {
+    return _DetectionResult(
+      board: BoardCircle(
+        centerX: 0, centerY: 0, radius: 1,
+        tier: BoardDetectionTier.centerFallback,
+      ),
+      points: [],
+    );
+  }
 
   img.Image? emptyImage;
   if (input.emptyBytes != null) {
@@ -48,14 +59,20 @@ _DetectionResult _processDartDetection(_DetectionInput input) {
   }
 
   if (emptyImage == null) {
-    return const _DetectionResult(board: null, points: []);
+    return _DetectionResult(
+      board: BoardCircle(
+        centerX: shotImage.width / 2, centerY: shotImage.height / 2,
+        radius: shotImage.width * 0.35,
+        tier: BoardDetectionTier.centerFallback,
+      ),
+      points: [],
+    );
   }
 
-  final board = BoardDetector.detectBoard(emptyImage);
-
-  if (board == null) {
-    return const _DetectionResult(board: null, points: []);
-  }
+  final board = BoardDetector.detectBoard(
+    emptyImage,
+    referenceBytes: input.referenceBytes,
+  );
 
   List<DetectedPoint> points;
   if (!kIsWeb) {
@@ -217,6 +234,7 @@ class _DetectionScreenState extends State<DetectionScreen>
   Uint8List? _shotBytes;
   bool _isConfirmed = false;
   bool _noDartsDetected = false;
+  bool _boardApproximate = false;
 
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
@@ -316,21 +334,24 @@ class _DetectionScreenState extends State<DetectionScreen>
 
       _setStep(2);
 
+      Uint8List? referenceBytes;
+      try {
+        final data = await rootBundle.load('assets/reference_board.jpg');
+        referenceBytes = data.buffer.asUint8List();
+      } catch (_) {}
+
       final input = _DetectionInput(
         shotBytes: shotBytes,
         emptyBytes: emptyBytes,
         emptyBoardPath: widget.emptyBoardPath,
         shotPath: widget.shotPath,
+        referenceBytes: referenceBytes,
       );
 
       final result = await compute(_processDartDetection, input);
 
-      if (result.board == null) {
-        setState(() {
-          _error = 'Could not detect the dartboard.\nMake sure the board is clearly visible in the photo.';
-          _isProcessing = false;
-        });
-        return;
+      if (result.board.tier == BoardDetectionTier.centerFallback) {
+        _boardApproximate = true;
       }
 
       if (result.points.isEmpty) {
@@ -346,7 +367,7 @@ class _DetectionScreenState extends State<DetectionScreen>
 
       final scoredDarts = ScoringGeometry.scoreAllDarts(
         result.points,
-        result.board!,
+        result.board,
       );
 
       await _waitForMinDuration(scoreStart, 400);
@@ -556,6 +577,14 @@ class _DetectionScreenState extends State<DetectionScreen>
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (_boardApproximate) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Board not clearly detected — scores may be approximate',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ],
               ],
               const Spacer(),
               if (_noDartsDetected || _error != null)
