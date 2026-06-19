@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../main.dart';
 
-class AboutScreen extends StatelessWidget {
+class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
+  @override
+  State<AboutScreen> createState() => _AboutScreenState();
+}
+
+class _AboutScreenState extends State<AboutScreen> {
+  bool _isLaunching = false;
 
   Future<void> _openGithub() async {
+    if (_isLaunching) return;
+    _isLaunching = true;
     final uri = Uri.parse('https://github.com/sayanmohsin');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+    _isLaunching = false;
   }
 
   @override
@@ -115,7 +125,16 @@ class AboutScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white12),
                     ),
-                    child: const Icon(Icons.code, color: Colors.white70, size: 22),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: SvgPicture.asset(
+                        'assets/github.svg',
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white70,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 48),
