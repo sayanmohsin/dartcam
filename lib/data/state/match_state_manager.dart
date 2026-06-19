@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/match_state.dart';
 import '../models/player_profile.dart';
 import '../models/turn_mutation.dart';
 import '../../core/constants/dartboard_constants.dart';
 import '../../core/vision/scoring_geometry.dart';
+
+const _matchKey = 'saved_match';
 
 class MatchStateManager extends ValueNotifier<DartMatchState> {
   MatchStateManager({
@@ -22,12 +26,44 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
               .toList(),
           history: [],
           status: MatchStatus.active,
-        ));
+        )) {
+    _save();
+  }
+
+  MatchStateManager._fromState(super.state) : super() {
+    _save();
+  }
+
+  static Future<MatchStateManager?> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString(_matchKey);
+    if (json == null) return null;
+    try {
+      final state = DartMatchState.fromJson(
+        jsonDecode(json) as Map<String, dynamic>,
+      );
+      if (state.isCompleted) return null;
+      return MatchStateManager._fromState(state);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_matchKey, jsonEncode(value.toJson()));
+  }
+
+  static Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_matchKey);
+  }
 
   void advanceTurn() {
     if (value.isCompleted) return;
     final nextIndex = (value.activePlayerIndex + 1) % value.players.length;
     value = value.copyWith(activePlayerIndex: nextIndex);
+    _save();
   }
 
   /// Records a turn. Returns a BustResult if the turn was a bust.
@@ -39,10 +75,6 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
     final totalScore = scores.fold(0, (sum, s) => sum + s);
     final newScore = scoreBefore - totalScore;
 
-    // Bust conditions:
-    // 1. Score goes below 0 (over-bust)
-    // 2. Score equals exactly 1 (can't finish on a double)
-    // 3. Score reaches 0 but last dart wasn't a double (must double out)
     final isOverBust = newScore < 0;
     final isOneBust = newScore == 1;
     final isCheckout = newScore == 0;
@@ -50,9 +82,7 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
     bool isBust = isOverBust || isOneBust;
 
     if (isCheckout && !isBust) {
-      // Must finish on a double - check if any dart was a double
       if (darts != null && darts.isNotEmpty) {
-        // Find the last non-zero dart (the checkout dart)
         ScoredDart? checkoutDart;
         for (int i = darts.length - 1; i >= 0; i--) {
           if (darts[i].totalScore > 0) {
@@ -60,20 +90,19 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
             break;
           }
         }
-        // Checkout dart must be a double (multiplier == 2) or bullseye (score == 50)
         if (checkoutDart != null &&
             checkoutDart.multiplier != 2 &&
             checkoutDart.score != 50) {
           isBust = true;
         }
-      } else {
-        // If no dart info provided, allow checkout (fallback for backward compat)
       }
     }
 
     if (isBust) {
       advanceTurn();
-      return isOverBust ? BustResult.overBust : (isOneBust ? BustResult.oneBust : BustResult.notDouble);
+      return isOverBust
+          ? BustResult.overBust
+          : (isOneBust ? BustResult.oneBust : BustResult.notDouble);
     }
 
     final mutation = TurnMutation(
@@ -102,6 +131,7 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
       advanceTurn();
     }
 
+    _save();
     return BustResult.none;
   }
 
@@ -133,6 +163,8 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
           targetIndex >= 0 ? targetIndex : value.activePlayerIndex,
       status: MatchStatus.active,
     );
+
+    _save();
   }
 
   bool get canUndo => value.history.isNotEmpty;
@@ -153,6 +185,11 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
       history: [],
       status: MatchStatus.active,
     );
+    _save();
+  }
+
+  void endMatch() {
+    clear();
   }
 }
 

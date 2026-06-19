@@ -132,7 +132,6 @@ class _SetupScreenState extends State<SetupScreen> {
     return Scaffold(
       backgroundColor: kDarkBg,
       appBar: AppBar(
-        title: const Text('New Match', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -484,6 +483,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _onEndMatch() {
+    widget.stateManager.endMatch();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const SetupScreen()),
     );

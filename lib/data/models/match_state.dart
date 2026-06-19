@@ -37,4 +37,25 @@ class DartMatchState {
   PlayerProfile get activePlayer => players[activePlayerIndex];
 
   bool get isCompleted => status == MatchStatus.completed;
+
+  Map<String, dynamic> toJson() => {
+        'gameType': gameType,
+        'activePlayerIndex': activePlayerIndex,
+        'players': players.map((p) => p.toJson()).toList(),
+        'history': history.map((h) => h.toJson()).toList(),
+        'status': status.index,
+      };
+
+  factory DartMatchState.fromJson(Map<String, dynamic> json) =>
+      DartMatchState(
+        gameType: json['gameType'] as int,
+        activePlayerIndex: json['activePlayerIndex'] as int,
+        players: (json['players'] as List)
+            .map((p) => PlayerProfile.fromJson(p as Map<String, dynamic>))
+            .toList(),
+        history: (json['history'] as List)
+            .map((h) => TurnMutation.fromJson(h as Map<String, dynamic>))
+            .toList(),
+        status: MatchStatus.values[json['status'] as int],
+      );
 }

@@ -20,4 +20,16 @@ class PlayerProfile {
       currentScore: currentScore ?? this.currentScore,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'currentScore': currentScore,
+      };
+
+  factory PlayerProfile.fromJson(Map<String, dynamic> json) => PlayerProfile(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        currentScore: json['currentScore'] as int,
+      );
 }

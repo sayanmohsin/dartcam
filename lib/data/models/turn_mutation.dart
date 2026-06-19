@@ -10,4 +10,18 @@ class TurnMutation {
     required this.totalTurnScore,
     required this.scoreBeforeTurn,
   });
+
+  Map<String, dynamic> toJson() => {
+        'playerId': playerId,
+        'detectedScores': detectedScores,
+        'totalTurnScore': totalTurnScore,
+        'scoreBeforeTurn': scoreBeforeTurn,
+      };
+
+  factory TurnMutation.fromJson(Map<String, dynamic> json) => TurnMutation(
+        playerId: json['playerId'] as String,
+        detectedScores: List<int>.from(json['detectedScores'] as List),
+        totalTurnScore: json['totalTurnScore'] as int,
+        scoreBeforeTurn: json['scoreBeforeTurn'] as int,
+      );
 }
