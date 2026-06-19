@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:image/image.dart' as img;
-import '../../core/constants/dartboard_constants.dart';
+import '../constants/dartboard_constants.dart';
+import 'board_detector.dart';
 
 class DetectedPoint {
   final double x;
@@ -13,23 +14,24 @@ class DetectedPoint {
 
 abstract class CVEngine {
   static List<DetectedPoint> extractDartCentroids(
-      String emptyPath, String shotPath) {
-    return PureDartCVEngine.extractDartCentroids(emptyPath, shotPath);
+      String emptyPath, String shotPath,
+      {BoardCircle? board}) {
+    return PureDartCVEngine.extractDartCentroids(emptyPath, shotPath,
+        board: board);
   }
 }
 
 class PureDartCVEngine {
   static List<DetectedPoint> extractDartCentroids(
-      String emptyPath, String shotPath) {
+      String emptyPath, String shotPath,
+      {BoardCircle? board}) {
     final emptyBytes = File(emptyPath).readAsBytesSync();
     final shotBytes = File(shotPath).readAsBytesSync();
 
     final emptyImage = img.decodeImage(emptyBytes);
     final shotImage = img.decodeImage(shotBytes);
 
-    if (emptyImage == null || shotImage == null) {
-      return [];
-    }
+    if (emptyImage == null || shotImage == null) return [];
 
     final width = min(emptyImage.width, shotImage.width);
     final height = min(emptyImage.height, shotImage.height);
@@ -38,6 +40,11 @@ class PureDartCVEngine {
 
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
+        if (board != null && !board.contains(x.toDouble(), y.toDouble())) {
+          diffImage.setPixelRgba(x, y, 0, 0, 0, 255);
+          continue;
+        }
+
         final emptyPixel = emptyImage.getPixel(x, y);
         final shotPixel = shotImage.getPixel(x, y);
 
@@ -57,42 +64,48 @@ class PureDartCVEngine {
 
     final blobs = _findBlobs(diffImage);
 
-    final sortedBlobs = List<Blob>.from(blobs)
-      ..sort((a, b) => b.area.compareTo(a.area));
+    final validatedBlobs = blobs.where((blob) {
+      if (blob.area < DartboardConstants.minBlobArea) return false;
+      if (blob.boundsWidth < 1 || blob.boundsHeight < 1) return false;
 
-    final topBlobs = sortedBlobs
-        .take(DartboardConstants.maxDetectedBlobs)
-        .toList();
-
-    return topBlobs.map((blob) {
-      final centroid = blob.centroid;
-      return DetectedPoint(
-        x: centroid.x,
-        y: centroid.y,
-        area: blob.area.toDouble(),
-      );
+      final aspect = max(blob.boundsWidth, blob.boundsHeight) /
+          min(blob.boundsWidth, blob.boundsHeight);
+      return aspect >= DartboardConstants.minDartAspectRatio;
     }).toList();
+
+    validatedBlobs.sort((a, b) => b.area.compareTo(a.area));
+
+    return validatedBlobs
+        .take(DartboardConstants.maxDetectedBlobs)
+        .map((blob) => DetectedPoint(
+              x: blob.centroidX,
+              y: blob.centroidY,
+              area: blob.area.toDouble(),
+            ))
+        .toList();
   }
 
-  static List<Blob> _findBlobs(img.Image binaryImage) {
+  static List<_BlobResult> _findBlobs(img.Image binaryImage) {
     final visited = List.generate(
       binaryImage.height,
       (y) => List.generate(binaryImage.width, (x) => false),
     );
 
-    final blobs = <Blob>[];
+    final blobs = <_BlobResult>[];
 
     for (int y = 0; y < binaryImage.height; y++) {
       for (int x = 0; x < binaryImage.width; x++) {
         if (visited[y][x]) continue;
 
         final pixel = binaryImage.getPixel(x, y);
-        if (pixel.r.toInt() == 0 && pixel.g.toInt() == 0 && pixel.b.toInt() == 0) {
+        if (pixel.r.toInt() == 0 &&
+            pixel.g.toInt() == 0 &&
+            pixel.b.toInt() == 0) {
           continue;
         }
 
         final blob = _floodFill(binaryImage, visited, x, y);
-        if (blob.area > 10) {
+        if (blob.area > 0) {
           blobs.add(blob);
         }
       }
@@ -101,7 +114,7 @@ class PureDartCVEngine {
     return blobs;
   }
 
-  static Blob _floodFill(
+  static _BlobResult _floodFill(
       img.Image image, List<List<bool>> visited, int startX, int startY) {
     final queue = <Point<int>>[Point(startX, startY)];
     visited[startY][startX] = true;
@@ -109,6 +122,7 @@ class PureDartCVEngine {
     double sumX = 0;
     double sumY = 0;
     int area = 0;
+    int minX = startX, maxX = startX, minY = startY, maxY = startY;
 
     while (queue.isNotEmpty) {
       final point = queue.removeLast();
@@ -116,27 +130,41 @@ class PureDartCVEngine {
       sumY += point.y;
       area++;
 
-      for (final neighbor in _getNeighbors(point.x, point.y, image.width, image.height)) {
+      if (point.x < minX) minX = point.x;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y < minY) minY = point.y;
+      if (point.y > maxY) maxY = point.y;
+
+      for (final neighbor
+          in _getNeighbors(point.x, point.y, image.width, image.height)) {
         if (visited[neighbor.y][neighbor.x]) continue;
 
         final pixel = image.getPixel(neighbor.x, neighbor.y);
-        if (pixel.r.toInt() > 0 || pixel.g.toInt() > 0 || pixel.b.toInt() > 0) {
+        if (pixel.r.toInt() > 0 ||
+            pixel.g.toInt() > 0 ||
+            pixel.b.toInt() > 0) {
           visited[neighbor.y][neighbor.x] = true;
           queue.add(neighbor);
         }
       }
     }
 
-    return Blob(
-      centroid: Offset(sumX / area, sumY / area),
+    return _BlobResult(
+      centroidX: sumX / area,
+      centroidY: sumY / area,
       area: area,
+      boundsWidth: (maxX - minX + 1).toDouble(),
+      boundsHeight: (maxY - minY + 1).toDouble(),
     );
   }
 
   static List<Point<int>> _getNeighbors(int x, int y, int width, int height) {
     final neighbors = <Point<int>>[];
     const offsets = [
-      (-1, 0), (1, 0), (0, -1), (0, 1),
+      (-1, 0),
+      (1, 0),
+      (0, -1),
+      (0, 1),
     ];
 
     for (final (dx, dy) in offsets) {
@@ -149,6 +177,22 @@ class PureDartCVEngine {
 
     return neighbors;
   }
+}
+
+class _BlobResult {
+  final double centroidX;
+  final double centroidY;
+  final int area;
+  final double boundsWidth;
+  final double boundsHeight;
+
+  const _BlobResult({
+    required this.centroidX,
+    required this.centroidY,
+    required this.area,
+    required this.boundsWidth,
+    required this.boundsHeight,
+  });
 }
 
 class Blob {

@@ -3,17 +3,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
-import '../widgets/score_badge.dart';
-import '../widgets/manual_picker_grid.dart';
+import '../widgets/score_badge.dart' hide kNeonOrange, kNeonOrangeGlow;
+import '../widgets/manual_picker_grid.dart' hide kNeonOrange, kNeonOrangeGlow;
 import '../../core/vision/cv_engine.dart';
+import '../../core/vision/board_detector.dart';
 import '../../core/vision/scoring_geometry.dart';
+import '../../core/constants/dartboard_constants.dart';
 import '../../data/state/match_state_manager.dart';
-
-const kNeonOrange = Color(0xFFFF6D00);
-const kNeonOrangeGlow = Color(0xFFFF9100);
-const kDarkBg = Color(0xFF121212);
-const kCardBg = Color(0xFF1E1E1E);
-const kInputBg = Color(0xFF2A2A2A);
+import '../../main.dart';
 
 class _DetectionInput {
   final Uint8List shotBytes;
@@ -29,32 +26,62 @@ class _DetectionInput {
   });
 }
 
-List<DetectedPoint> _processDartDetection(_DetectionInput input) {
-  final shotImage = img.decodeImage(input.shotBytes);
-  if (shotImage == null) return [];
+class _DetectionResult {
+  final BoardCircle? board;
+  final List<DetectedPoint> points;
 
-  if (input.emptyBytes != null) {
-    final emptyImage = img.decodeImage(input.emptyBytes!);
-    if (emptyImage != null) {
-      return _processImagesPure(emptyImage, shotImage);
-    }
-  }
-
-  if (!kIsWeb) {
-    return CVEngine.extractDartCentroids(input.emptyBoardPath, input.shotPath);
-  }
-
-  return [];
+  const _DetectionResult({required this.board, required this.points});
 }
 
-List<DetectedPoint> _processImagesPure(img.Image emptyImg, img.Image shotImg) {
-  final width = emptyImg.width < shotImg.width ? emptyImg.width : shotImg.width;
-  final height = emptyImg.height < shotImg.height ? emptyImg.height : shotImg.height;
+_DetectionResult _processDartDetection(_DetectionInput input) {
+  final shotImage = img.decodeImage(input.shotBytes);
+  if (shotImage == null) return const _DetectionResult(board: null, points: []);
+
+  img.Image? emptyImage;
+  if (input.emptyBytes != null) {
+    emptyImage = img.decodeImage(input.emptyBytes!);
+  }
+
+  if (emptyImage == null && !kIsWeb) {
+    final emptyBytes = File(input.emptyBoardPath).readAsBytesSync();
+    emptyImage = img.decodeImage(emptyBytes);
+  }
+
+  if (emptyImage == null) {
+    return const _DetectionResult(board: null, points: []);
+  }
+
+  final board = BoardDetector.detectBoard(emptyImage);
+
+  if (board == null) {
+    return const _DetectionResult(board: null, points: []);
+  }
+
+  List<DetectedPoint> points;
+  if (!kIsWeb) {
+    points = CVEngine.extractDartCentroids(
+        input.emptyBoardPath, input.shotPath,
+        board: board);
+  } else {
+    points = _processImagesPure(emptyImage, shotImage, board);
+  }
+
+  return _DetectionResult(board: board, points: points);
+}
+
+List<DetectedPoint> _processImagesPure(
+    img.Image emptyImg, img.Image shotImg, BoardCircle board) {
+  final width =
+      emptyImg.width < shotImg.width ? emptyImg.width : shotImg.width;
+  final height =
+      emptyImg.height < shotImg.height ? emptyImg.height : shotImg.height;
 
   final diffPixels = <int, int>{};
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
+      if (!board.contains(x.toDouble(), y.toDouble())) continue;
+
       final emptyPixel = emptyImg.getPixel(x, y);
       final shotPixel = shotImg.getPixel(x, y);
 
@@ -63,7 +90,7 @@ List<DetectedPoint> _processImagesPure(img.Image emptyImg, img.Image shotImg) {
       final db = (shotPixel.b.toInt() - emptyPixel.b.toInt()).abs();
       final gray = ((dr + dg + db) / 3).toInt();
 
-      if (gray > 30) {
+      if (gray > DartboardConstants.imageDiffThreshold) {
         diffPixels[y * width + x] = gray;
       }
     }
@@ -72,9 +99,19 @@ List<DetectedPoint> _processImagesPure(img.Image emptyImg, img.Image shotImg) {
   if (diffPixels.isEmpty) return [];
 
   final blobs = _findBlobsPure(diffPixels, width, height);
-  blobs.sort((a, b) => b['area']!.compareTo(a['area']!));
 
-  return blobs.take(3).map((blob) {
+  final validated = blobs.where((b) {
+    if (b['area']! < DartboardConstants.minBlobArea) return false;
+    final bw = b['bw']!;
+    final bh = b['bh']!;
+    if (bw < 1 || bh < 1) return false;
+    final aspect = bw > bh ? bw / bh : bh / bw;
+    return aspect >= DartboardConstants.minDartAspectRatio;
+  }).toList();
+
+  validated.sort((a, b) => b['area']!.compareTo(a['area']!));
+
+  return validated.take(3).map((blob) {
     return DetectedPoint(
       x: blob['cx']!,
       y: blob['cy']!,
@@ -83,7 +120,8 @@ List<DetectedPoint> _processImagesPure(img.Image emptyImg, img.Image shotImg) {
   }).toList();
 }
 
-List<Map<String, double>> _findBlobsPure(Map<int, int> pixels, int width, int height) {
+List<Map<String, double>> _findBlobsPure(
+    Map<int, int> pixels, int width, int height) {
   final visited = <int>{};
   final blobs = <Map<String, double>>[];
 
@@ -95,6 +133,10 @@ List<Map<String, double>> _findBlobsPure(Map<int, int> pixels, int width, int he
 
     double sumX = 0, sumY = 0;
     int area = 0;
+    int minX = entry.key % width,
+        maxX = entry.key % width,
+        minY = entry.key ~/ width,
+        maxY = entry.key ~/ width;
 
     while (queue.isNotEmpty) {
       final idx = queue.removeLast();
@@ -104,7 +146,14 @@ List<Map<String, double>> _findBlobsPure(Map<int, int> pixels, int width, int he
       sumY += y;
       area++;
 
-      for (final offset in [-1, 1, -width, width, -width - 1, -width + 1, width - 1, width + 1]) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+
+      for (final offset in [
+        -1, 1, -width, width, -width - 1, -width + 1, width - 1, width + 1
+      ]) {
         final neighbor = idx + offset;
         if (neighbor < 0 || neighbor >= width * height) continue;
         if (visited.contains(neighbor)) continue;
@@ -113,18 +162,24 @@ List<Map<String, double>> _findBlobsPure(Map<int, int> pixels, int width, int he
         final nx = neighbor % width;
         final ny = neighbor ~/ width;
         if ((offset == -1 || offset == 1) && ny != y) continue;
-        if ((offset.abs() != width) && (offset.abs() != 1) && (nx - x).abs() > 1) continue;
+        if ((offset.abs() != width) &&
+            (offset.abs() != 1) &&
+            (nx - x).abs() > 1) {
+          continue;
+        }
 
         visited.add(neighbor);
         queue.add(neighbor);
       }
     }
 
-    if (area > 10) {
+    if (area > 0) {
       blobs.add({
         'cx': sumX / area,
         'cy': sumY / area,
         'area': area.toDouble(),
+        'bw': (maxX - minX + 1).toDouble(),
+        'bh': (maxY - minY + 1).toDouble(),
       });
     }
   }
@@ -151,7 +206,8 @@ class DetectionScreen extends StatefulWidget {
   static final Map<String, Uint8List> _webImageCache = {};
   static Uint8List? getWebImage(String key) => _webImageCache[key];
   static bool hasWebImage(String key) => _webImageCache.containsKey(key);
-  static void setWebImage(String key, Uint8List bytes) => _webImageCache[key] = bytes;
+  static void setWebImage(String key, Uint8List bytes) =>
+      _webImageCache[key] = bytes;
   static void clearWebImage(String key) => _webImageCache.remove(key);
 
   @override
@@ -165,14 +221,15 @@ class _DetectionScreenState extends State<DetectionScreen>
   String? _error;
   Uint8List? _shotBytes;
   bool _isConfirmed = false;
+  bool _noDartsDetected = false;
 
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
   int _loadingStep = 0;
 
   static const _loadingSteps = [
-    'Loading image...',
-    'Decoding image data...',
+    'Detecting board...',
+    'Loading images...',
     'Analyzing dart positions...',
     'Scoring detected darts...',
   ];
@@ -211,7 +268,6 @@ class _DetectionScreenState extends State<DetectionScreen>
 
   Future<void> _loadAndProcess() async {
     try {
-      // Step 0: Loading image file
       _setStep(0);
       final loadStart = DateTime.now();
 
@@ -244,14 +300,9 @@ class _DetectionScreenState extends State<DetectionScreen>
         });
         return;
       }
-      await _waitForMinDuration(loadStart, 600);
 
-      // Step 1: Decoding image data
-      _setStep(1);
-      final decodeStart = DateTime.now();
-
-      final image = img.decodeImage(shotBytes);
-      if (image == null) {
+      final shotImage = img.decodeImage(shotBytes);
+      if (shotImage == null) {
         setState(() {
           _error = 'Failed to decode image';
           _isProcessing = false;
@@ -259,13 +310,15 @@ class _DetectionScreenState extends State<DetectionScreen>
         return;
       }
 
-      // Show image immediately
       setState(() {
         _shotBytes = shotBytes;
       });
-      await _waitForMinDuration(decodeStart, 500);
+      await _waitForMinDuration(loadStart, 600);
 
-      // Step 2: Analyzing dart positions (heavy CV in background)
+      _setStep(1);
+      final decodeStart = DateTime.now();
+      await _waitForMinDuration(decodeStart, 400);
+
       _setStep(2);
 
       final input = _DetectionInput(
@@ -275,16 +328,30 @@ class _DetectionScreenState extends State<DetectionScreen>
         shotPath: widget.shotPath,
       );
 
-      final points = await compute(_processDartDetection, input);
+      final result = await compute(_processDartDetection, input);
 
-      // Step 3: Scoring detected darts
+      if (result.board == null) {
+        setState(() {
+          _error = 'Could not detect the dartboard.\nMake sure the board is clearly visible in the photo.';
+          _isProcessing = false;
+        });
+        return;
+      }
+
+      if (result.points.isEmpty) {
+        setState(() {
+          _noDartsDetected = true;
+          _isProcessing = false;
+        });
+        return;
+      }
+
       _setStep(3);
       final scoreStart = DateTime.now();
 
       final scoredDarts = ScoringGeometry.scoreAllDarts(
-        points,
-        image.width.toDouble(),
-        image.height.toDouble(),
+        result.points,
+        result.board!,
       );
 
       await _waitForMinDuration(scoreStart, 400);
@@ -383,6 +450,20 @@ class _DetectionScreenState extends State<DetectionScreen>
     widget.onRetake();
   }
 
+  void _goToManualEntry() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ManualEntryScreen(
+          stateManager: widget.stateManager,
+          onConfirmed: () {
+            Navigator.of(context).pop();
+            widget.onConfirmed();
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -395,7 +476,11 @@ class _DetectionScreenState extends State<DetectionScreen>
           icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
         title: Text(
-          _isProcessing ? 'Analyzing...' : 'Review Darts',
+          _isProcessing
+              ? 'Analyzing...'
+              : _noDartsDetected
+                  ? 'No Darts Found'
+                  : 'Review Darts',
           style: const TextStyle(color: Colors.white),
         ),
       ),
@@ -412,93 +497,131 @@ class _DetectionScreenState extends State<DetectionScreen>
                       ? _buildLoadingView()
                       : _error != null
                           ? _buildErrorView()
-                          : _buildImageView(),
+                          : _noDartsDetected
+                              ? _buildNoDartsView()
+                              : _buildImageView(),
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  if (index < _scoredDarts.length) {
-                    final dart = _scoredDarts[index];
+              if (!_noDartsDetected && _error == null) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (index) {
+                    if (index < _scoredDarts.length) {
+                      final dart = _scoredDarts[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: ScoreBadge(
+                          score: dart.totalScore,
+                          label: dart.label,
+                          onTap: () => _editDart(index),
+                        ),
+                      );
+                    }
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: ScoreBadge(
-                        score: dart.totalScore,
-                        label: dart.label,
-                        onTap: () => _editDart(index),
-                      ),
-                    );
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: GestureDetector(
-                      onTap: _isProcessing ? null : () => _addDart(index),
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: kInputBg,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: kNeonOrange,
-                            width: 2,
-                            style: BorderStyle.solid,
+                      child: GestureDetector(
+                        onTap:
+                            _isProcessing ? null : () => _addDart(index),
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: kInputBg,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: kNeonOrange,
+                              width: 2,
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add,
+                                  color: Colors.grey[500], size: 24),
+                              Text(
+                                'Dart ${index + 1}',
+                                style: TextStyle(
+                                    color: Colors.grey[500], fontSize: 10),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add, color: Colors.grey[500], size: 24),
-                            Text(
-                              'Dart ${index + 1}',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 10),
-                            ),
-                          ],
-                        ),
                       ),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Turn Total: $turnTotal',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                    );
+                  }),
                 ),
-              ),
+                const SizedBox(height: 12),
+                Text(
+                  'Turn Total: $turnTotal',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
               const Spacer(),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _retake,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        side: const BorderSide(color: Colors.grey),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+              if (_noDartsDetected || _error != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _retake,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          side: const BorderSide(color: Colors.grey),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Try Again'),
                       ),
-                      child: const Text('Retake'),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _scoredDarts.isNotEmpty && !_isProcessing ? _confirmScore : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kNeonOrange,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey[700],
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _goToManualEntry,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kNeonOrange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Enter Manually'),
                       ),
-                      child: const Text('ADD SCORE'),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _retake,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          side: const BorderSide(color: Colors.grey),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Retake'),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _scoredDarts.isNotEmpty && !_isProcessing
+                            ? _confirmScore
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kNeonOrange,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey[700],
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('ADD SCORE'),
+                      ),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 16),
             ],
           ),
@@ -534,7 +657,6 @@ class _DetectionScreenState extends State<DetectionScreen>
               ),
             ),
             const SizedBox(height: 12),
-            // Step dots
             Row(
               mainAxisSize: MainAxisSize.min,
               children: List.generate(
@@ -551,7 +673,6 @@ class _DetectionScreenState extends State<DetectionScreen>
               ),
             ),
             const SizedBox(height: 16),
-            // Progress bar
             SizedBox(
               width: 160,
               child: AnimatedBuilder(
@@ -581,27 +702,62 @@ class _DetectionScreenState extends State<DetectionScreen>
       width: double.infinity,
       height: double.infinity,
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.search_off, color: Colors.white38, size: 48),
-            const SizedBox(height: 12),
-            const Text(
-              'Couldn\'t detect darts',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: _retake,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: kNeonOrange,
-                side: const BorderSide(color: kNeonOrange),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.search_off, color: Colors.white38, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _error ?? 'Unknown error',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 15),
               ),
-              child: const Text('Try Again'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNoDartsView() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (_shotBytes != null)
+          kIsWeb
+              ? Image.memory(_shotBytes!, fit: BoxFit.contain)
+              : Image.file(File(widget.shotPath), fit: BoxFit.contain)
+        else
+          Container(color: kInputBg),
+        Container(
+          color: Colors.black54,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.gps_off, color: Colors.white54, size: 48),
+                SizedBox(height: 16),
+                Text(
+                  'No darts detected',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Make sure darts are clearly visible\non the board',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white54, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -614,7 +770,8 @@ class _DetectionScreenState extends State<DetectionScreen>
           return Container(
             color: kInputBg,
             child: const Center(
-              child: Icon(Icons.broken_image, color: Colors.grey, size: 64),
+              child:
+                  Icon(Icons.broken_image, color: Colors.grey, size: 64),
             ),
           );
         },
@@ -627,7 +784,8 @@ class _DetectionScreenState extends State<DetectionScreen>
           return Container(
             color: kInputBg,
             child: const Center(
-              child: Icon(Icons.broken_image, color: Colors.grey, size: 64),
+              child:
+                  Icon(Icons.broken_image, color: Colors.grey, size: 64),
             ),
           );
         },
@@ -655,7 +813,8 @@ class _DetectionScreenState extends State<DetectionScreen>
     if (result != null) {
       setState(() {
         while (_scoredDarts.length <= index) {
-          _scoredDarts.add(const ScoredDart(score: 0, multiplier: 1, label: '0'));
+          _scoredDarts
+              .add(const ScoredDart(score: 0, multiplier: 1, label: '0'));
         }
         _scoredDarts[index] = ScoredDart(
           score: result.score,
