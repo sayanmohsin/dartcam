@@ -21,7 +21,7 @@
 
 > **Latest:** [v0.1.0 Beta](https://github.com/sayanmohsin/dartcam/releases/tag/v0.1.0-beta) — download the APK and install on your Android device.
 
-APK location: `build/app/outputs/flutter-apk/app-debug.apk`
+APK: `DartCam-v0.1.0-beta.apk`
 
 ---
 
