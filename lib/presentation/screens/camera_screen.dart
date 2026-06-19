@@ -122,10 +122,14 @@ class _CameraScreenState extends State<CameraScreen> {
           return Stack(
             fit: StackFit.expand,
             children: [
-              Center(
-                child: AspectRatio(
-                  aspectRatio: _controller!.value.aspectRatio,
-                  child: CameraPreview(_controller!),
+              SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller!.value.previewSize!.height,
+                    height: _controller!.value.previewSize!.width,
+                    child: CameraPreview(_controller!),
+                  ),
                 ),
               ),
               CustomPaint(
