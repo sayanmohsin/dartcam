@@ -43,6 +43,7 @@ DartCam is a clean, no-fuss dart scoring app. No accounts, no cloud, no distract
 | Match modes | 301, 501, 701, 1001 with double-out enforcement |
 | Bust detection | Over-bust, can't-finish-on-1, must-finish-on-double — all handled |
 | Undo | Made a mistake? Undo the last dart |
+| Match persistence | Auto-saves your match — resume where you left off, even after closing the app |
 | Multiplayer | 2–8 players with automatic turn rotation |
 | Dark theme | Neon orange accent on dark background — easy on the eyes for late-night games |
 | Branded splash | Clean loading screen with fade-in animation |
@@ -100,6 +101,14 @@ flutter build apk --release
 
 > The release APK requires a signing key. See [Android signing docs](https://docs.flutter.dev/deployment/android#signing-the-app) for setup.
 
+### Update beta release
+
+```bash
+./scripts/release.sh
+```
+
+Builds a debug APK and replaces the GitHub release (same download URL).
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -108,6 +117,8 @@ flutter build apk --release
 | Camera | image_picker |
 | Image processing | Pure Dart (image package) |
 | State management | ValueNotifier + MatchStateManager |
+| Persistence | shared_preferences |
+| SVG icons | flutter_svg |
 | Icons | flutter_launcher_icons |
 | Native splash | flutter_native_splash |
 | URL launching | url_launcher |
@@ -151,7 +162,6 @@ Manual entry works perfectly as a fallback.
 
 - Camera detection is sensitive to lighting conditions
 - Board must stay in roughly the same position between calibration and throw photos
-- No score history persistence (matches are session-only)
 - Release APK requires manual signing key setup
 
 ## License
