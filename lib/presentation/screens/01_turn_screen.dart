@@ -90,8 +90,8 @@ class TurnScreen extends StatelessWidget {
           SizedBox(height: MediaQuery.of(context).size.height * 0.04),
           if (stateManager.canUndo)
             GestureDetector(
-              onTap: () {
-                stateManager.undoLastTurn();
+              onTap: () async {
+                await stateManager.undoLastTurn();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Last turn undone'),
@@ -242,7 +242,7 @@ class TurnScreen extends StatelessWidget {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () => stateManager.resetMatch(),
+                onPressed: () async => await stateManager.resetMatch(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kNeonOrange,
                   foregroundColor: Colors.white,

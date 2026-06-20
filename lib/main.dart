@@ -9,6 +9,7 @@ import 'presentation/screens/camera_screen.dart';
 import 'presentation/widgets/manual_picker_grid.dart';
 import 'core/vision/dartboard_scorer.dart';
 import 'data/state/match_state_manager.dart';
+import 'services/thingd_service.dart';
 
 const kNeonOrange = Color(0xFFFF6D00);
 const kNeonOrangeGlow = Color(0xFFFF9100);
@@ -17,6 +18,7 @@ const kCardBg = Color(0xFF1E1E1E);
 const kInputBg = Color(0xFF2A2A2A);
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const DartScorerApp());
 }
 
@@ -36,15 +38,73 @@ class DartScorerApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: kDarkBg,
       ),
-      home: const SplashScreen(),
+      home: const AppLoader(),
     );
+  }
+}
+
+class AppLoader extends StatefulWidget {
+  const AppLoader({super.key});
+  @override
+  State<AppLoader> createState() => _AppLoaderState();
+}
+
+class _AppLoaderState extends State<AppLoader> {
+  ThingdService? _thingd;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final thingd = await ThingdService.open();
+      if (mounted) {
+        setState(() {
+          _thingd = thingd;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF111215),
+        body: Center(child: CircularProgressIndicator(color: kNeonOrange)),
+      );
+    }
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF111215),
+        body: Center(
+          child: Text('Failed to initialize: $_error',
+              style: const TextStyle(color: Colors.red)),
+        ),
+      );
+    }
+    return SplashScreen(thingd: _thingd!);
   }
 }
 
 // ---------- SETUP SCREEN ----------
 
 class SetupScreen extends StatefulWidget {
-  const SetupScreen({super.key});
+  final ThingdService thingd;
+  const SetupScreen({super.key, required this.thingd});
 
   @override
   State<SetupScreen> createState() => _SetupScreenState();
@@ -79,7 +139,7 @@ class _SetupScreenState extends State<SetupScreen> {
     });
   }
 
-  void _startGame() {
+  Future<void> _startGame() async {
     final names = _controllers
         .map((c) => c.text.trim())
         .where((n) => n.isNotEmpty)
@@ -106,11 +166,13 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
 
-    final stateManager = MatchStateManager(
+    final stateManager = await MatchStateManager.create(
+      thingd: widget.thingd,
       playerNames: names,
       gameType: _selectedGameType,
     );
 
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => GameScreen(stateManager: stateManager),
@@ -462,11 +524,13 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  void _onEndMatch() {
-    widget.stateManager.endMatch();
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const SetupScreen()),
-    );
+  Future<void> _onEndMatch() async {
+    await widget.stateManager.endMatch();
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => SetupScreen(thingd: widget.stateManager.thingd)),
+      );
+    }
   }
 
   @override
@@ -527,13 +591,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     }
   }
 
-  void _confirmScore() {
+  Future<void> _confirmScore() async {
     if (_isConfirmed) return;
     _isConfirmed = true;
 
     final scores = _darts.map((d) => d?.totalScore ?? 0).toList();
 
-    final bustResult = widget.stateManager.recordTurn(
+    final bustResult = await widget.stateManager.recordTurn(
       scores,
       darts: _darts.whereType<ScoredDart>().toList(),
     );

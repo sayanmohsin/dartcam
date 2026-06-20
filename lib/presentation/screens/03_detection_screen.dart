@@ -195,7 +195,7 @@ class _DetectionScreenState extends State<DetectionScreen>
     }
   }
 
-  void _confirmScore() {
+  Future<void> _confirmScore() async {
     if (_isConfirmed) return;
     _isConfirmed = true;
 
@@ -204,7 +204,7 @@ class _DetectionScreenState extends State<DetectionScreen>
       scores.add(0);
     }
 
-    final bustResult = widget.stateManager.recordTurn(
+    final bustResult = await widget.stateManager.recordTurn(
       scores.sublist(0, 3),
       darts: _scoredDarts,
     );

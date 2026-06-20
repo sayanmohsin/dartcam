@@ -1,73 +1,127 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/match_state.dart';
 import '../models/player_profile.dart';
 import '../models/turn_mutation.dart';
 import '../../core/constants/dartboard_constants.dart';
 import '../../core/vision/dartboard_scorer.dart';
-
-const _matchKey = 'saved_match';
+import '../../services/thingd_service.dart';
 
 class MatchStateManager extends ValueNotifier<DartMatchState> {
-  MatchStateManager({
+  final ThingdService _thingd;
+  String matchId;
+
+  ThingdService get thingd => _thingd;
+
+  MatchStateManager._({
+    required DartMatchState state,
+    required ThingdService thingd,
+    required this.matchId,
+  })  : _thingd = thingd,
+        super(state);
+
+  /// Create a new match and persist it to thingd.
+  static Future<MatchStateManager> create({
+    required ThingdService thingd,
     required List<String> playerNames,
     int gameType = DartboardConstants.defaultGameType,
-  }) : super(DartMatchState(
-          gameType: gameType,
-          activePlayerIndex: 0,
-          players: playerNames
-              .map((name) => PlayerProfile(
-                    id: const Uuid().v4(),
-                    name: name,
-                    currentScore: gameType,
-                  ))
-              .toList(),
-          history: [],
-          status: MatchStatus.active,
-        )) {
-    _save();
+  }) async {
+    final matchId = const Uuid().v4();
+    final state = DartMatchState(
+      gameType: gameType,
+      activePlayerIndex: 0,
+      players: playerNames
+          .map((name) => PlayerProfile(
+                id: const Uuid().v4(),
+                name: name,
+                currentScore: gameType,
+              ))
+          .toList(),
+      history: [],
+      status: MatchStatus.active,
+    );
+
+    await thingd.saveMatchConfig(matchId, gameType, playerNames);
+    await thingd.setActiveMatchId(matchId);
+
+    return MatchStateManager._(
+      state: state,
+      thingd: thingd,
+      matchId: matchId,
+    );
   }
 
-  MatchStateManager._fromState(super.state) : super() {
-    _save();
-  }
+  /// Load the active match from thingd by replaying events.
+  /// Returns null if no active match exists.
+  static Future<MatchStateManager?> load(ThingdService thingd) async {
+    final matchId = await thingd.getActiveMatchId();
+    if (matchId == null) return null;
 
-  static Future<MatchStateManager?> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString(_matchKey);
-    if (json == null) return null;
-    try {
-      final state = DartMatchState.fromJson(
-        jsonDecode(json) as Map<String, dynamic>,
+    final config = await thingd.getMatchConfig(matchId);
+    if (config == null) return null;
+
+    final gameType = config['gameType'] as int;
+    final playerNames = List<String>.from(config['playerNames'] as List);
+
+    final turns = await thingd.listTurns(matchId);
+
+    // Rebuild state by replaying events
+    var activePlayerIndex = 0;
+    var players = playerNames
+        .map((name) => PlayerProfile(
+              id: const Uuid().v4(),
+              name: name,
+              currentScore: gameType,
+            ))
+        .toList();
+
+    final history = <TurnMutation>[];
+
+    for (final turn in turns) {
+      // Find the player and apply the turn
+      final playerIndex = players.indexWhere((p) => p.id == turn.playerId);
+      if (playerIndex < 0) continue;
+
+      final updatedPlayers = List<PlayerProfile>.from(players);
+      updatedPlayers[playerIndex] = updatedPlayers[playerIndex].copyWith(
+        currentScore: turn.scoreBeforeTurn - turn.totalTurnScore,
       );
-      if (state.isCompleted) return null;
-      return MatchStateManager._fromState(state);
-    } catch (_) {
-      return null;
+
+      players = updatedPlayers;
+      history.add(turn);
+      activePlayerIndex = playerIndex;
     }
+
+    final isCompleted = players.any((p) => p.currentScore == 0);
+    final state = DartMatchState(
+      gameType: gameType,
+      activePlayerIndex: activePlayerIndex,
+      players: players,
+      history: history,
+      status: isCompleted ? MatchStatus.completed : MatchStatus.active,
+    );
+
+    if (state.isCompleted) return null;
+
+    return MatchStateManager._(
+      state: state,
+      thingd: thingd,
+      matchId: matchId,
+    );
   }
 
-  Future<void> _save() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_matchKey, jsonEncode(value.toJson()));
-  }
-
-  static Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_matchKey);
+  static Future<void> clear(ThingdService thingd) async {
+    await thingd.clearAll();
   }
 
   void advanceTurn() {
     if (value.isCompleted) return;
     final nextIndex = (value.activePlayerIndex + 1) % value.players.length;
     value = value.copyWith(activePlayerIndex: nextIndex);
-    _save();
   }
 
   /// Records a turn. Returns a BustResult if the turn was a bust.
-  BustResult recordTurn(List<int> scores, {List<ScoredDart>? darts}) {
+  Future<BustResult> recordTurn(List<int> scores, {List<ScoredDart>? darts}) async {
     if (value.isCompleted) return BustResult.none;
 
     final player = value.activePlayer;
@@ -127,15 +181,17 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
       status: isComplete ? MatchStatus.completed : MatchStatus.active,
     );
 
+    // Persist event to thingd
+    await _thingd.appendTurn(matchId, mutation);
+
     if (!isComplete) {
       advanceTurn();
     }
 
-    _save();
     return BustResult.none;
   }
 
-  void undoLastTurn() {
+  Future<void> undoLastTurn() async {
     if (value.history.isEmpty) return;
 
     final lastMutation = value.history.last;
@@ -164,14 +220,25 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
       status: MatchStatus.active,
     );
 
-    _save();
+    // Delete last event from thingd
+    await _thingd.undoLastTurn(matchId);
   }
 
   bool get canUndo => value.history.isNotEmpty;
 
-  void resetMatch({int? gameType}) {
+  Future<void> resetMatch({int? gameType}) async {
     final newGameType = gameType ?? value.gameType;
     final playerNames = value.players.map((p) => p.name).toList();
+
+    // Delete old match stream and create new match
+    await _thingd.deleteMatch(matchId);
+
+    final newMatchId = const Uuid().v4();
+    await _thingd.saveMatchConfig(newMatchId, newGameType, playerNames);
+    await _thingd.setActiveMatchId(newMatchId);
+
+    matchId = newMatchId;
+
     value = DartMatchState(
       gameType: newGameType,
       activePlayerIndex: 0,
@@ -185,11 +252,11 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
       history: [],
       status: MatchStatus.active,
     );
-    _save();
   }
 
-  void endMatch() {
-    clear();
+  Future<void> endMatch() async {
+    await _thingd.deleteMatch(matchId);
+    await _thingd.setActiveMatchId(null);
   }
 }
 

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../main.dart';
 import '../../data/state/match_state_manager.dart';
+import '../../services/thingd_service.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final ThingdService thingd;
+  const SplashScreen({super.key, required this.thingd});
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
@@ -37,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
 
-    final savedManager = await MatchStateManager.load();
+    final savedManager = await MatchStateManager.load(widget.thingd);
 
     if (!mounted) return;
 
@@ -45,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen>
       PageRouteBuilder(
         pageBuilder: (_, _, _) => savedManager != null
             ? GameScreen(stateManager: savedManager)
-            : const SetupScreen(),
+            : SetupScreen(thingd: widget.thingd),
         transitionDuration: const Duration(milliseconds: 400),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
