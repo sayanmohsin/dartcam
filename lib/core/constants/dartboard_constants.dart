@@ -25,4 +25,14 @@ class DartboardConstants {
   static const int imageDiffThreshold = 80;
   static const int minBlobArea = 200;
   static const int maxDetectedBlobs = 3;
+
+  // ML detection thresholds
+  static const double detectionConfThreshold = 0.25;
+
+  // Board numbers (clockwise from top)
+  static const List<String> boardNumbers = [
+    '20', '1', '18', '4', '13', '6', '10', '15',
+    '2', '17', '3', '19', '7', '16', '8', '11',
+    '14', '9', '12', '5',
+  ];
 }
