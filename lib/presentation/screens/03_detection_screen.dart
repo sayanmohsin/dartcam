@@ -1,132 +1,14 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 import '../widgets/score_badge.dart' hide kNeonOrange, kNeonOrangeGlow;
 import '../widgets/manual_picker_grid.dart' hide kNeonOrange, kNeonOrangeGlow;
-import '../../core/vision/cv_engine.dart';
-import '../../core/vision/scoring_geometry.dart';
+import '../../core/vision/ml_engine.dart';
+import '../../core/vision/dartboard_scorer.dart';
 import '../../data/state/match_state_manager.dart';
 import '../../main.dart';
-
-class _DetectionInput {
-  final Uint8List shotBytes;
-  final Uint8List? emptyBytes;
-  final String emptyBoardPath;
-  final String shotPath;
-
-  const _DetectionInput({
-    required this.shotBytes,
-    this.emptyBytes,
-    required this.emptyBoardPath,
-    required this.shotPath,
-  });
-}
-
-List<DetectedPoint> _processDartDetection(_DetectionInput input) {
-  if (!kIsWeb) {
-    return CVEngine.extractDartCentroids(
-        input.emptyBoardPath, input.shotPath);
-  }
-
-  final shotImage = img.decodeImage(input.shotBytes);
-  if (shotImage == null) return [];
-
-  img.Image? emptyImage;
-  if (input.emptyBytes != null) {
-    emptyImage = img.decodeImage(input.emptyBytes!);
-  }
-  if (emptyImage == null) return [];
-
-  return _processImagesPure(emptyImage, shotImage);
-}
-
-List<DetectedPoint> _processImagesPure(img.Image emptyImg, img.Image shotImg) {
-  final width =
-      emptyImg.width < shotImg.width ? emptyImg.width : shotImg.width;
-  final height =
-      emptyImg.height < shotImg.height ? emptyImg.height : shotImg.height;
-
-  final diffPixels = <int, int>{};
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      final emptyPixel = emptyImg.getPixel(x, y);
-      final shotPixel = shotImg.getPixel(x, y);
-
-      final dr = (shotPixel.r.toInt() - emptyPixel.r.toInt()).abs();
-      final dg = (shotPixel.g.toInt() - emptyPixel.g.toInt()).abs();
-      final db = (shotPixel.b.toInt() - emptyPixel.b.toInt()).abs();
-      final gray = ((dr + dg + db) / 3).toInt();
-
-      if (gray > 80) {
-        diffPixels[y * width + x] = gray;
-      }
-    }
-  }
-
-  if (diffPixels.isEmpty) return [];
-
-  final blobs = _findBlobsPure(diffPixels, width, height);
-  blobs.sort((a, b) => b['area']!.compareTo(a['area']!));
-
-  return blobs.take(3).map((blob) {
-    return DetectedPoint(
-      x: blob['cx']!,
-      y: blob['cy']!,
-      area: blob['area']!.toDouble(),
-    );
-  }).toList();
-}
-
-List<Map<String, double>> _findBlobsPure(
-    Map<int, int> pixels, int width, int height) {
-  final visited = <int>{};
-  final blobs = <Map<String, double>>[];
-
-  for (final entry in pixels.entries) {
-    if (visited.contains(entry.key)) continue;
-
-    final queue = [entry.key];
-    visited.add(entry.key);
-
-    double sumX = 0, sumY = 0;
-    int area = 0;
-
-    while (queue.isNotEmpty) {
-      final idx = queue.removeLast();
-      final x = idx % width;
-      final y = idx ~/ width;
-      sumX += x;
-      sumY += y;
-      area++;
-
-      for (final offset in [-1, 1, -width, width]) {
-        final neighbor = idx + offset;
-        if (neighbor < 0 || neighbor >= width * height) continue;
-        if (visited.contains(neighbor)) continue;
-        if (!pixels.containsKey(neighbor)) continue;
-
-        final ny = neighbor ~/ width;
-        if ((offset == -1 || offset == 1) && ny != y) continue;
-
-        visited.add(neighbor);
-        queue.add(neighbor);
-      }
-    }
-
-    if (area >= 200) {
-      blobs.add({
-        'cx': sumX / area,
-        'cy': sumY / area,
-        'area': area.toDouble(),
-      });
-    }
-  }
-
-  return blobs;
-}
 
 class DetectionScreen extends StatefulWidget {
   final MatchStateManager stateManager;
@@ -163,14 +45,15 @@ class _DetectionScreenState extends State<DetectionScreen>
   Uint8List? _shotBytes;
   bool _isConfirmed = false;
   bool _noDartsDetected = false;
+  bool _boardNotDetected = false;
 
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
   int _loadingStep = 0;
 
   static const _loadingSteps = [
-    'Loading image...',
-    'Analyzing...',
+    'Loading model...',
+    'Detecting darts...',
     'Scoring...',
   ];
 
@@ -211,44 +94,20 @@ class _DetectionScreenState extends State<DetectionScreen>
       _setStep(0);
       final loadStart = DateTime.now();
 
-      Uint8List? shotBytes;
-      Uint8List? emptyBytes;
-
-      if (kIsWeb) {
-        shotBytes = DetectionScreen.getWebImage(widget.shotPath);
-        emptyBytes = DetectionScreen.getWebImage(widget.emptyBoardPath);
-      } else {
-        final file = File(widget.shotPath);
-        if (!await file.exists()) {
-          setState(() {
-            _error = 'Shot image not found';
-            _isProcessing = false;
-          });
-          return;
-        }
-        shotBytes = await file.readAsBytes();
-        final emptyFile = File(widget.emptyBoardPath);
-        if (await emptyFile.exists()) {
-          emptyBytes = await emptyFile.readAsBytes();
-        }
+      if (!MLEngine.isLoaded) {
+        await MLEngine.loadModel();
       }
 
-      if (shotBytes == null) {
+      Uint8List? shotBytes;
+      final file = File(widget.shotPath);
+      if (!await file.exists()) {
         setState(() {
           _error = 'Shot image not found';
           _isProcessing = false;
         });
         return;
       }
-
-      final shotImage = img.decodeImage(shotBytes);
-      if (shotImage == null) {
-        setState(() {
-          _error = 'Failed to decode image';
-          _isProcessing = false;
-        });
-        return;
-      }
+      shotBytes = await file.readAsBytes();
 
       setState(() {
         _shotBytes = shotBytes;
@@ -258,17 +117,26 @@ class _DetectionScreenState extends State<DetectionScreen>
       _setStep(1);
       final analyzeStart = DateTime.now();
 
-      final input = _DetectionInput(
-        shotBytes: shotBytes,
-        emptyBytes: emptyBytes,
-        emptyBoardPath: widget.emptyBoardPath,
-        shotPath: widget.shotPath,
-      );
-
-      final points = await compute(_processDartDetection, input);
+      final result = await MLEngine.detect(shotBytes);
       await _waitForMinDuration(analyzeStart, 500);
 
-      if (points.isEmpty) {
+      if (result == null) {
+        setState(() {
+          _error = 'Detection failed';
+          _isProcessing = false;
+        });
+        return;
+      }
+
+      if (!result.hasAllCalibrationPoints) {
+        setState(() {
+          _boardNotDetected = true;
+          _isProcessing = false;
+        });
+        return;
+      }
+
+      if (!result.hasDartTips) {
         setState(() {
           _noDartsDetected = true;
           _isProcessing = false;
@@ -279,10 +147,9 @@ class _DetectionScreenState extends State<DetectionScreen>
       _setStep(2);
       final scoreStart = DateTime.now();
 
-      final scoredDarts = ScoringGeometry.scoreAllDarts(
-        points,
-        shotImage.width.toDouble(),
-        shotImage.height.toDouble(),
+      final scoredDarts = DartboardScorer.scoreDarts(
+        dartTips: result.dartTips,
+        calibrationPoints: result.calibrationPoints,
       );
 
       await _waitForMinDuration(scoreStart, 400);
@@ -370,13 +237,9 @@ class _DetectionScreenState extends State<DetectionScreen>
   }
 
   void _retake() {
-    if (!kIsWeb) {
-      final shotFile = File(widget.shotPath);
-      if (shotFile.existsSync()) {
-        shotFile.deleteSync();
-      }
-    } else {
-      DetectionScreen.clearWebImage(widget.shotPath);
+    final shotFile = File(widget.shotPath);
+    if (shotFile.existsSync()) {
+      shotFile.deleteSync();
     }
     widget.onRetake();
   }
@@ -409,9 +272,11 @@ class _DetectionScreenState extends State<DetectionScreen>
         title: Text(
           _isProcessing
               ? 'Analyzing...'
-              : _noDartsDetected
-                  ? 'No Darts Found'
-                  : 'Review Darts',
+              : _boardNotDetected
+                  ? 'Board Not Detected'
+                  : _noDartsDetected
+                      ? 'No Darts Found'
+                      : 'Review Darts',
           style: const TextStyle(color: Colors.white),
         ),
       ),
@@ -428,13 +293,17 @@ class _DetectionScreenState extends State<DetectionScreen>
                       ? _buildLoadingView()
                       : _error != null
                           ? _buildErrorView()
-                          : _noDartsDetected
-                              ? _buildNoDartsView()
-                              : _buildImageView(),
+                          : _boardNotDetected
+                              ? _buildBoardNotDetectedView()
+                              : _noDartsDetected
+                                  ? _buildNoDartsView()
+                                  : _buildImageView(),
                 ),
               ),
               const SizedBox(height: 16),
-              if (!_noDartsDetected && _error == null) ...[
+              if (!_noDartsDetected &&
+                  !_boardNotDetected &&
+                  _error == null) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(3, (index) {
@@ -493,7 +362,7 @@ class _DetectionScreenState extends State<DetectionScreen>
                 ),
               ],
               const Spacer(),
-              if (_noDartsDetected || _error != null)
+              if (_noDartsDetected || _boardNotDetected || _error != null)
                 Row(
                   children: [
                     Expanded(
@@ -651,14 +520,50 @@ class _DetectionScreenState extends State<DetectionScreen>
     );
   }
 
+  Widget _buildBoardNotDetectedView() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (_shotBytes != null)
+          Image.file(File(widget.shotPath), fit: BoxFit.contain)
+        else
+          Container(color: kInputBg),
+        Container(
+          color: Colors.black54,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.crop_free, color: Colors.white54, size: 48),
+                SizedBox(height: 16),
+                Text(
+                  'Board not fully visible',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Make sure the entire dartboard\nis visible in the frame',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white54, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildNoDartsView() {
     return Stack(
       fit: StackFit.expand,
       children: [
         if (_shotBytes != null)
-          kIsWeb
-              ? Image.memory(_shotBytes!, fit: BoxFit.contain)
-              : Image.file(File(widget.shotPath), fit: BoxFit.contain)
+          Image.file(File(widget.shotPath), fit: BoxFit.contain)
         else
           Container(color: kInputBg),
         Container(
@@ -692,21 +597,7 @@ class _DetectionScreenState extends State<DetectionScreen>
   }
 
   Widget _buildImageView() {
-    if (kIsWeb && _shotBytes != null) {
-      return Image.memory(
-        _shotBytes!,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            color: kInputBg,
-            child: const Center(
-              child:
-                  Icon(Icons.broken_image, color: Colors.grey, size: 64),
-            ),
-          );
-        },
-      );
-    } else if (!kIsWeb && _shotBytes != null) {
+    if (_shotBytes != null) {
       return Image.file(
         File(widget.shotPath),
         fit: BoxFit.contain,
