@@ -7,7 +7,7 @@ import 'presentation/screens/03_detection_screen.dart';
 import 'presentation/screens/04_about_screen.dart';
 import 'presentation/screens/camera_screen.dart';
 import 'presentation/widgets/manual_picker_grid.dart';
-import 'core/vision/scoring_geometry.dart';
+import 'core/vision/dartboard_scorer.dart';
 import 'data/state/match_state_manager.dart';
 
 const kNeonOrange = Color(0xFFFF6D00);

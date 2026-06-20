@@ -6,7 +6,7 @@ import '../models/match_state.dart';
 import '../models/player_profile.dart';
 import '../models/turn_mutation.dart';
 import '../../core/constants/dartboard_constants.dart';
-import '../../core/vision/scoring_geometry.dart';
+import '../../core/vision/dartboard_scorer.dart';
 
 const _matchKey = 'saved_match';
 
