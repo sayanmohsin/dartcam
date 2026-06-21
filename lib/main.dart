@@ -7,6 +7,7 @@ import 'presentation/screens/03_detection_screen.dart';
 import 'presentation/screens/04_about_screen.dart';
 import 'presentation/screens/camera_screen.dart';
 import 'presentation/widgets/manual_picker_grid.dart';
+import 'presentation/widgets/dartboard_picker.dart';
 import 'core/vision/dartboard_scorer.dart';
 import 'data/state/match_state_manager.dart';
 import 'services/thingd_service.dart';
@@ -569,14 +570,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   int get _dartCount => _darts.where((d) => d != null && d.totalScore > 0).length;
 
   Future<void> _editDart(int index) async {
-    final current = _darts[index];
     final result = await showModalBottomSheet<ManualPickerResult>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: kCardBg,
-      builder: (context) => ManualPickerGrid(
-        initialScore: current?.score ?? 20,
-        initialLabel: current?.label ?? '20',
+      backgroundColor: Colors.transparent,
+      builder: (context) => DartboardPicker(
+        onScore: (score) => Navigator.of(context).pop(score),
       ),
     );
 

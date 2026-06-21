@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../widgets/score_badge.dart' hide kNeonOrange, kNeonOrangeGlow;
 import '../widgets/manual_picker_grid.dart' hide kNeonOrange, kNeonOrangeGlow;
+import '../widgets/dartboard_picker.dart';
 import '../../core/vision/ml_engine.dart';
 import '../../core/vision/dartboard_scorer.dart';
 import '../../data/state/match_state_manager.dart';
@@ -173,14 +174,12 @@ class _DetectionScreenState extends State<DetectionScreen>
   int get turnTotal => _scoredDarts.fold(0, (sum, d) => sum + d.totalScore);
 
   Future<void> _editDart(int index) async {
-    final dart = _scoredDarts[index];
     final result = await showModalBottomSheet<ManualPickerResult>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: kCardBg,
-      builder: (context) => ManualPickerGrid(
-        initialScore: dart.score,
-        initialLabel: dart.label,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DartboardPicker(
+        onScore: (score) => Navigator.of(context).pop(score),
       ),
     );
 
@@ -624,10 +623,9 @@ class _DetectionScreenState extends State<DetectionScreen>
     final result = await showModalBottomSheet<ManualPickerResult>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: kCardBg,
-      builder: (context) => const ManualPickerGrid(
-        initialScore: 20,
-        initialLabel: '20',
+      backgroundColor: Colors.transparent,
+      builder: (context) => DartboardPicker(
+        onScore: (score) => Navigator.of(context).pop(score),
       ),
     );
 
