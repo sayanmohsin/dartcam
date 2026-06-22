@@ -1,8 +1,8 @@
 use std::sync::Mutex;
 
-use thingd_core::{EventLog, ListEventsOptions, MemoryEvent, ObjectStore, SqliteThingStore};
+use thingd::{EventLog, ListEventsOptions, MemoryEvent, ObjectStore, SqliteThingStore};
 
-/// A thread-safe wrapper around thingd-core's SQLite-backed store.
+/// A thread-safe wrapper around thingd's SQLite-backed store.
 ///
 /// Exposes object storage and event log operations to Dart via FRB.
 pub struct ThingdBridge {
@@ -26,7 +26,7 @@ impl ThingdBridge {
         body: String,
     ) -> Result<String, String> {
         let mut store = self.inner.lock().map_err(|e| e.to_string())?;
-        let obj = thingd_core::MemoryObject::new(&collection, &id, &body);
+        let obj = thingd::MemoryObject::new(&collection, &id, &body);
         let result = store.put_object(obj).map_err(|e| e.to_string())?;
         Ok(result.body)
     }
