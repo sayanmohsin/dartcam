@@ -748,7 +748,7 @@ version = "0.1.0"
 dependencies = [
  "flutter_rust_bridge",
  "serde_json",
- "thingd-core",
+ "thingd",
 ]
 
 [[package]]
@@ -776,6 +776,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
+ "serde_derive",
 ]
 
 [[package]]
@@ -856,13 +857,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "thingd-core"
-version = "0.31.0"
+name = "thingd"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f3b031fbcddcf3e556147929a7b33aedec1da0594b9358c54f990abfc469665"
+checksum = "3eeb60ca04c745a02e17b94e89069ea40117a55bd44a933755309e0870a8aa6e"
 dependencies = [
  "chrono",
  "rusqlite",
+ "serde",
  "serde_json",
  "uuid",
 ]
