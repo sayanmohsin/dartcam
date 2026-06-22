@@ -858,9 +858,9 @@ dependencies = [
 
 [[package]]
 name = "thingd"
-version = "0.33.0"
+version = "0.33.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eeb60ca04c745a02e17b94e89069ea40117a55bd44a933755309e0870a8aa6e"
+checksum = "bff83181d2f061fd9a8b37bc27314d5be38c411b771e50008345001582c93e4f"
 dependencies = [
  "chrono",
  "rusqlite",
