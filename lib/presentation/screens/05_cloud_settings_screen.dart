@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../main.dart';
+import '../../core/constants/env_config.dart';
 import '../../data/models/cloud_credentials.dart';
 import '../../services/cloud_auth_service.dart';
+import '../../services/cloud_usage_service.dart';
 import '../../services/thingd_service.dart';
 
 class CloudSettingsScreen extends StatefulWidget {
@@ -19,10 +21,11 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
   bool _isChecking = true;
   bool _isConnected = false;
   bool _isTesting = false;
+  bool _isFromEnv = false;
   String? _error;
 
   final _serverUrlController = TextEditingController(
-    text: 'https://api.thingd.cloud',
+    text: EnvConfig.cloudUrl,
   );
   final _apiKeyController = TextEditingController();
 
@@ -42,9 +45,11 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
 
   Future<void> _load() async {
     final creds = await _auth.loadCredentials();
+    final fromEnv = await _auth.isUsingEnvConfig();
     if (mounted) {
       setState(() {
         _creds = creds;
+        _isFromEnv = fromEnv;
         _isChecking = false;
       });
     }
@@ -104,7 +109,7 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
     final creds = CloudCredentials(
       serverUrl: serverUrl,
       apiKey: apiKey,
-      email: 'sayan@thingd.cloud',
+      email: 'env',
       registeredAt: DateTime.now(),
     );
 
@@ -113,6 +118,7 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
     if (mounted) {
       setState(() {
         _creds = creds;
+        _isFromEnv = false;
         _isConnected = true;
         _isTesting = false;
         _error = null;
@@ -134,6 +140,7 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
       setState(() {
         _creds = null;
         _isConnected = false;
+        _isFromEnv = EnvConfig.hasCloudConfig;
         _error = null;
       });
     }
@@ -172,7 +179,9 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                           ? Colors.grey[700]!
                           : _isConnected
                               ? const Color(0xFF006400)
-                              : Colors.grey[700]!,
+                              : _isFromEnv
+                                  ? const Color(0xFFFF6D00)
+                                  : Colors.grey[700]!,
                     ),
                   ),
                   child: Row(
@@ -190,6 +199,9 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                       else if (_isConnected)
                         const Icon(Icons.cloud_done,
                             color: Color(0xFF006400), size: 20)
+                      else if (_isFromEnv)
+                        const Icon(Icons.cloud_outlined,
+                            color: Color(0xFFFF6D00), size: 20)
                       else
                         const Icon(Icons.cloud_off,
                             color: Colors.white38, size: 20),
@@ -199,13 +211,15 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                             ? 'Checking...'
                             : _isConnected
                                 ? 'Connected to thingd.cloud'
-                                : _creds != null
-                                    ? 'Disconnected'
+                                : _isFromEnv
+                                    ? 'Env configured — test connection'
                                     : 'Not configured',
                         style: TextStyle(
                           color: _isConnected
                               ? const Color(0xFF006400)
-                              : Colors.white70,
+                              : _isFromEnv
+                                  ? const Color(0xFFFF6D00)
+                                  : Colors.white70,
                           fontSize: 15,
                         ),
                       ),
@@ -214,6 +228,31 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                 ),
               ),
               const SizedBox(height: 32),
+
+              // Env config badge
+              if (_isFromEnv && !_isConnected)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A2E),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFF6D00).withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.settings, color: Color(0xFFFF6D00), size: 18),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Cloud URL and API key loaded from environment variables.',
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               // Server URL
               const Text(
@@ -262,7 +301,9 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                 decoration: InputDecoration(
                   hintText: _creds != null
                       ? '•••••••• (saved)'
-                      : 'Enter your API key',
+                      : EnvConfig.hasCloudConfig
+                          ? '•••••••• (from env)'
+                          : 'Enter your API key',
                   hintStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
                   fillColor: kInputBg,
@@ -290,8 +331,8 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                   border: Border.all(color: Colors.blueGrey[800]!),
                 ),
                 child: const Text(
-                  'Connect to thingd.cloud to sync your matches across devices. '
-                  'Your data will be pushed to the cloud automatically when connected.',
+                  'Game data stays on your device. Match results and player '
+                  'stats are pushed to the cloud for leaderboard and history.',
                   style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
               ),
@@ -364,6 +405,29 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                     ),
                   ],
                 )
+              else if (_isFromEnv)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isTesting ? null : _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kNeonOrange,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey[700],
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: _isTesting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text('Test Connection'),
+                  ),
+                )
               else
                 SizedBox(
                   width: double.infinity,
@@ -393,14 +457,14 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                 const Divider(color: Colors.white12),
                 const SizedBox(height: 16),
                 const Text(
-                  'Cloud Sync',
+                  'Usage Sync',
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                CloudSyncStatus(creds: _creds!, auth: _auth),
+                _CloudUsageStatus(creds: _creds!, auth: _auth),
               ],
             ],
           ),
@@ -410,21 +474,36 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
   }
 }
 
-class CloudSyncStatus extends StatefulWidget {
+class _CloudUsageStatus extends StatefulWidget {
   final CloudCredentials creds;
   final CloudAuthService auth;
 
-  const CloudSyncStatus({
-    super.key,
+  const _CloudUsageStatus({
     required this.creds,
     required this.auth,
   });
 
   @override
-  State<CloudSyncStatus> createState() => _CloudSyncStatusState();
+  State<_CloudUsageStatus> createState() => _CloudUsageStatusState();
 }
 
-class _CloudSyncStatusState extends State<CloudSyncStatus> {
+class _CloudUsageStatusState extends State<_CloudUsageStatus> {
+  int? _matchCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    final svc = CloudUsageService(widget.auth);
+    final history = await svc.fetchMatchHistory(widget.creds);
+    if (mounted) {
+      setState(() => _matchCount = history.length);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -435,11 +514,21 @@ class _CloudSyncStatusState extends State<CloudSyncStatus> {
       ),
       child: Row(
         children: [
-          Icon(Icons.sync, color: Colors.grey[500], size: 18),
+          Icon(
+            _matchCount != null ? Icons.cloud_done : Icons.cloud_outlined,
+            color: _matchCount != null && _matchCount! > 0
+                ? const Color(0xFFFF6D00)
+                : Colors.grey[500],
+            size: 18,
+          ),
           const SizedBox(width: 12),
           Text(
-            'Syncing will be available in a future update.',
-            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            _matchCount != null
+                ? '$_matchCount match result${_matchCount == 1 ? '' : 's'} synced'
+                : 'Checking cloud stats...',
+            style: TextStyle(
+                color: _matchCount != null ? Colors.white54 : Colors.grey[500],
+                fontSize: 13),
           ),
         ],
       ),

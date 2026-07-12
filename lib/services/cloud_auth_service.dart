@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../core/constants/env_config.dart';
 import '../data/models/cloud_credentials.dart';
 import 'thingd_service.dart';
 
@@ -21,18 +22,44 @@ class CloudAuthService {
     );
   }
 
-  /// Load stored cloud credentials from local thingd.
+  /// Load cloud credentials.
+  ///
+  /// Priority: stored override > environment variables > null
   Future<CloudCredentials?> loadCredentials() async {
+    // First check local thingd storage (user-entered override)
     final body = await _local.bridge.getObject(
       collection: _collection,
       id: _credsId,
     );
-    if (body == null) return null;
-    return CloudCredentials.fromJson(
-        jsonDecode(body) as Map<String, dynamic>);
+    if (body != null) {
+      return CloudCredentials.fromJson(
+          jsonDecode(body) as Map<String, dynamic>);
+    }
+
+    // Fall back to environment variables
+    if (EnvConfig.hasCloudConfig) {
+      return CloudCredentials(
+        serverUrl: EnvConfig.cloudUrl,
+        apiKey: EnvConfig.cloudApiKey,
+        email: 'env',
+        registeredAt: DateTime.now(),
+      );
+    }
+
+    return null;
   }
 
-  /// Clear stored cloud credentials.
+  /// Whether the active credentials come from env vars (not a stored override).
+  Future<bool> isUsingEnvConfig() async {
+    final body = await _local.bridge.getObject(
+      collection: _collection,
+      id: _credsId,
+    );
+    if (body != null) return false;
+    return EnvConfig.hasCloudConfig;
+  }
+
+  /// Clear stored cloud credentials (does not clear env vars).
   Future<void> clearCredentials() async {
     await _local.bridge.deleteObject(
       collection: _collection,
