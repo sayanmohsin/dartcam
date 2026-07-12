@@ -9,6 +9,9 @@ import '../src/rust/frb_generated.dart';
 class ThingdService {
   final ThingdBridge _bridge;
 
+  /// Public access to the underlying bridge (needed by CloudAuthService).
+  ThingdBridge get bridge => _bridge;
+
   /// Cached last-known event sequence per match stream for incremental replay.
   final Map<String, int> _lastSequences = {};
 

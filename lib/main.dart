@@ -5,12 +5,15 @@ import 'presentation/screens/00_splash_screen.dart';
 import 'presentation/screens/01_turn_screen.dart';
 import 'presentation/screens/03_detection_screen.dart';
 import 'presentation/screens/04_about_screen.dart';
+import 'presentation/screens/05_cloud_settings_screen.dart';
 import 'presentation/screens/camera_screen.dart';
 import 'presentation/widgets/manual_picker_grid.dart';
 import 'presentation/widgets/dartboard_picker.dart';
 import 'core/vision/dartboard_scorer.dart';
 import 'data/state/match_state_manager.dart';
 import 'services/thingd_service.dart';
+import 'services/cloud_auth_service.dart';
+import 'data/models/cloud_credentials.dart';
 
 const kNeonOrange = Color(0xFFFF6D00);
 const kNeonOrangeGlow = Color(0xFFFF9100);
@@ -418,13 +421,24 @@ class _SetupScreenState extends State<SetupScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    onPressed: () {
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => CloudSettingsScreen(thingd: widget.thingd),
+                        ),
+                      );
+                    },
+                    child: const Icon(Icons.cloud_outlined, color: Colors.white24, size: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const AboutScreen()),
                       );
                     },
-                    icon: const Icon(Icons.info_outline, color: Colors.white24, size: 20),
+                    child: const Icon(Icons.info_outline, color: Colors.white24, size: 20),
                   ),
                   const SizedBox(width: 4),
                   const Text(
