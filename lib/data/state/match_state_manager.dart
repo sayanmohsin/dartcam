@@ -77,6 +77,11 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
 
     final history = <TurnMutation>[];
 
+    // Cache the last sequence for future incremental replay
+    if (turns.isNotEmpty) {
+      thingd.setLastSequence(matchId, turns.length);
+    }
+
     for (final turn in turns) {
       // Find the player and apply the turn
       final playerIndex = players.indexWhere((p) => p.id == turn.playerId);

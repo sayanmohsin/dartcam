@@ -64,7 +64,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -466332677;
+  int get rustContentHash => -1556606143;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -83,6 +83,12 @@ abstract class RustLibApi extends BaseApi {
     required String body,
   });
 
+  Future<List<String>> crateApiBridgeThingdBridgeAppendEventsBatch({
+    required ThingdBridge that,
+    required String stream,
+    required List<(String, String)> events,
+  });
+
   Future<String?> crateApiBridgeThingdBridgeDeleteLastEvent({
     required ThingdBridge that,
     required String stream,
@@ -92,6 +98,11 @@ abstract class RustLibApi extends BaseApi {
     required ThingdBridge that,
     required String collection,
     required String id,
+  });
+
+  Future<BigInt> crateApiBridgeThingdBridgeDeleteObjectsBatch({
+    required ThingdBridge that,
+    required List<(String, String)> keys,
   });
 
   Future<BigInt> crateApiBridgeThingdBridgeDeleteStream({
@@ -110,13 +121,33 @@ abstract class RustLibApi extends BaseApi {
     required String stream,
   });
 
+  Future<List<(String, BigInt)>> crateApiBridgeThingdBridgeListEventsFrom({
+    required ThingdBridge that,
+    required String stream,
+    required BigInt fromSequence,
+    required BigInt limit,
+  });
+
   Future<ThingdBridge> crateApiBridgeThingdBridgeOpen({required String path});
+
+  Future<void> crateApiBridgeThingdBridgeOptimizeSearchIndex({
+    required ThingdBridge that,
+  });
 
   Future<String> crateApiBridgeThingdBridgePutObject({
     required ThingdBridge that,
     required String collection,
     required String id,
     required String body,
+  });
+
+  Future<List<String>> crateApiBridgeThingdBridgePutObjectsBatch({
+    required ThingdBridge that,
+    required List<(String, String, String)> objects,
+  });
+
+  Future<(int, int)> crateApiBridgeThingdBridgeWalCheckpoint({
+    required ThingdBridge that,
   });
 
   RustArcIncrementStrongCountFnType
@@ -179,6 +210,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<String>> crateApiBridgeThingdBridgeAppendEventsBatch({
+    required ThingdBridge that,
+    required String stream,
+    required List<(String, String)> events,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(stream, serializer);
+          sse_encode_list_record_string_string(events, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeAppendEventsBatchConstMeta,
+        argValues: [that, stream, events],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeAppendEventsBatchConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_append_events_batch",
+        argNames: ["that", "stream", "events"],
+      );
+
+  @override
   Future<String?> crateApiBridgeThingdBridgeDeleteLastEvent({
     required ThingdBridge that,
     required String stream,
@@ -195,7 +266,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -235,7 +306,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -257,6 +328,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<BigInt> crateApiBridgeThingdBridgeDeleteObjectsBatch({
+    required ThingdBridge that,
+    required List<(String, String)> keys,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_list_record_string_string(keys, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeDeleteObjectsBatchConstMeta,
+        argValues: [that, keys],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeDeleteObjectsBatchConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_delete_objects_batch",
+        argNames: ["that", "keys"],
+      );
+
+  @override
   Future<BigInt> crateApiBridgeThingdBridgeDeleteStream({
     required ThingdBridge that,
     required String stream,
@@ -273,7 +382,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 6,
             port: port_,
           );
         },
@@ -313,7 +422,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 7,
             port: port_,
           );
         },
@@ -351,7 +460,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 8,
             port: port_,
           );
         },
@@ -373,6 +482,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<(String, BigInt)>> crateApiBridgeThingdBridgeListEventsFrom({
+    required ThingdBridge that,
+    required String stream,
+    required BigInt fromSequence,
+    required BigInt limit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(stream, serializer);
+          sse_encode_u_64(fromSequence, serializer);
+          sse_encode_u_64(limit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_record_string_u_64,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeListEventsFromConstMeta,
+        argValues: [that, stream, fromSequence, limit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeListEventsFromConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_list_events_from",
+        argNames: ["that", "stream", "fromSequence", "limit"],
+      );
+
+  @override
   Future<ThingdBridge> crateApiBridgeThingdBridgeOpen({required String path}) {
     return handler.executeNormal(
       NormalTask(
@@ -382,7 +533,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 10,
             port: port_,
           );
         },
@@ -400,6 +551,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiBridgeThingdBridgeOpenConstMeta =>
       const TaskConstMeta(debugName: "ThingdBridge_open", argNames: ["path"]);
+
+  @override
+  Future<void> crateApiBridgeThingdBridgeOptimizeSearchIndex({
+    required ThingdBridge that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeOptimizeSearchIndexConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeOptimizeSearchIndexConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_optimize_search_index",
+        argNames: ["that"],
+      );
 
   @override
   Future<String> crateApiBridgeThingdBridgePutObject({
@@ -422,7 +609,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 12,
             port: port_,
           );
         },
@@ -441,6 +628,80 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "ThingdBridge_put_object",
         argNames: ["that", "collection", "id", "body"],
+      );
+
+  @override
+  Future<List<String>> crateApiBridgeThingdBridgePutObjectsBatch({
+    required ThingdBridge that,
+    required List<(String, String, String)> objects,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_list_record_string_string_string(objects, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgePutObjectsBatchConstMeta,
+        argValues: [that, objects],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgePutObjectsBatchConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_put_objects_batch",
+        argNames: ["that", "objects"],
+      );
+
+  @override
+  Future<(int, int)> crateApiBridgeThingdBridgeWalCheckpoint({
+    required ThingdBridge that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_record_i_32_i_32,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeWalCheckpointConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeWalCheckpointConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_wal_checkpoint",
+        argNames: ["that"],
       );
 
   RustArcIncrementStrongCountFnType
@@ -491,6 +752,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
   List<String> dco_decode_list_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_String).toList();
@@ -503,9 +770,75 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
+  }
+
+  @protected
+  List<(String, String, String)> dco_decode_list_record_string_string_string(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_record_string_string_string)
+        .toList();
+  }
+
+  @protected
+  List<(String, BigInt)> dco_decode_list_record_string_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_record_string_u_64).toList();
+  }
+
+  @protected
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  (int, int) dco_decode_record_i_32_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (dco_decode_i_32(arr[0]), dco_decode_i_32(arr[1]));
+  }
+
+  @protected
+  (String, String) dco_decode_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
+  }
+
+  @protected
+  (String, String, String) dco_decode_record_string_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3) {
+      throw Exception('Expected 3 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_String(arr[0]),
+      dco_decode_String(arr[1]),
+      dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  (String, BigInt) dco_decode_record_string_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (dco_decode_String(arr[0]), dco_decode_u_64(arr[1]));
   }
 
   @protected
@@ -518,6 +851,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int dco_decode_u_8(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
+  }
+
+  @protected
+  void dco_decode_unit(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return;
   }
 
   @protected
@@ -576,6 +915,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
+  }
+
+  @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -595,6 +940,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, String)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_record_string_string(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<(String, String, String)> sse_decode_list_record_string_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, String, String)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_record_string_string_string(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<(String, BigInt)> sse_decode_list_record_string_u_64(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, BigInt)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_record_string_u_64(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -603,6 +990,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     } else {
       return null;
     }
+  }
+
+  @protected
+  (int, int) sse_decode_record_i_32_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_i_32(deserializer);
+    var var_field1 = sse_decode_i_32(deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  (String, String) sse_decode_record_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 = sse_decode_String(deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  (String, String, String) sse_decode_record_string_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 = sse_decode_String(deserializer);
+    var var_field2 = sse_decode_String(deserializer);
+    return (var_field0, var_field1, var_field2);
+  }
+
+  @protected
+  (String, BigInt) sse_decode_record_string_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 = sse_decode_u_64(deserializer);
+    return (var_field0, var_field1);
   }
 
   @protected
@@ -618,15 +1042,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  BigInt sse_decode_usize(SseDeserializer deserializer) {
+  void sse_decode_unit(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getBigUint64();
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
+  BigInt sse_decode_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
+    return deserializer.buffer.getBigUint64();
   }
 
   @protected
@@ -681,6 +1104,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
+  }
+
+  @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
@@ -700,6 +1129,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_record_string_string(
+    List<(String, String)> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_string(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_record_string_string_string(
+    List<(String, String, String)> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_string_string(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_record_string_u_64(
+    List<(String, BigInt)> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_u_64(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -707,6 +1172,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_String(self, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_record_i_32_i_32((int, int) self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.$1, serializer);
+    sse_encode_i_32(self.$2, serializer);
+  }
+
+  @protected
+  void sse_encode_record_string_string(
+    (String, String) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_String(self.$2, serializer);
+  }
+
+  @protected
+  void sse_encode_record_string_string_string(
+    (String, String, String) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_String(self.$2, serializer);
+    sse_encode_String(self.$3, serializer);
+  }
+
+  @protected
+  void sse_encode_record_string_u_64(
+    (String, BigInt) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_u_64(self.$2, serializer);
   }
 
   @protected
@@ -722,15 +1225,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_usize(BigInt self, SseSerializer serializer) {
+  void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putBigUint64(self);
   }
 
   @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
+  void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
+    serializer.buffer.putBigUint64(self);
   }
 }
 
@@ -765,6 +1267,16 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
     body: body,
   );
 
+  /// Append multiple events to a stream in a single transaction.
+  Future<List<String>> appendEventsBatch({
+    required String stream,
+    required List<(String, String)> events,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgeAppendEventsBatch(
+    that: this,
+    stream: stream,
+    events: events,
+  );
+
   /// Delete the most recent event from a stream.
   /// Returns the deleted event body, or None if the stream was empty.
   Future<String?> deleteLastEvent({required String stream}) => RustLib
@@ -778,6 +1290,13 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
         that: this,
         collection: collection,
         id: id,
+      );
+
+  /// Delete multiple objects in a single transaction. Returns count deleted.
+  Future<BigInt> deleteObjectsBatch({required List<(String, String)> keys}) =>
+      RustLib.instance.api.crateApiBridgeThingdBridgeDeleteObjectsBatch(
+        that: this,
+        keys: keys,
       );
 
   /// Delete all events in a stream. Returns the count of deleted events.
@@ -798,6 +1317,28 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
       .api
       .crateApiBridgeThingdBridgeListEvents(that: this, stream: stream);
 
+  /// List events from a given sequence number. Returns (body, sequence) pairs.
+  ///
+  /// Only returns events with sequence > `from_sequence`, up to `limit`.
+  /// Pass `from_sequence: 0` to get all events. Pass `limit: 0` for no limit.
+  Future<List<(String, BigInt)>> listEventsFrom({
+    required String stream,
+    required BigInt fromSequence,
+    required BigInt limit,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgeListEventsFrom(
+    that: this,
+    stream: stream,
+    fromSequence: fromSequence,
+    limit: limit,
+  );
+
+  /// Optimize the FTS5 search index to merge segments and reclaim space.
+  ///
+  /// Run periodically (e.g. every 50 matches) to prevent search
+  /// performance degradation from index fragmentation.
+  Future<void> optimizeSearchIndex() => RustLib.instance.api
+      .crateApiBridgeThingdBridgeOptimizeSearchIndex(that: this);
+
   /// Insert or replace an object. Returns the stored body.
   Future<String> putObject({
     required String collection,
@@ -809,4 +1350,19 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
     id: id,
     body: body,
   );
+
+  /// Insert or replace multiple objects in a single transaction.
+  Future<List<String>> putObjectsBatch({
+    required List<(String, String, String)> objects,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgePutObjectsBatch(
+    that: this,
+    objects: objects,
+  );
+
+  /// Flush the SQLite WAL into the main database file.
+  ///
+  /// Call this before the app goes to background to prevent data loss.
+  /// Returns `(frames_before, frames_after)` where frames_after should be 0.
+  Future<(int, int)> walCheckpoint() =>
+      RustLib.instance.api.crateApiBridgeThingdBridgeWalCheckpoint(that: this);
 }

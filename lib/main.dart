@@ -50,7 +50,7 @@ class AppLoader extends StatefulWidget {
   State<AppLoader> createState() => _AppLoaderState();
 }
 
-class _AppLoaderState extends State<AppLoader> {
+class _AppLoaderState extends State<AppLoader> with WidgetsBindingObserver {
   ThingdService? _thingd;
   bool _loading = true;
   String? _error;
@@ -58,7 +58,21 @@ class _AppLoaderState extends State<AppLoader> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _init();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _thingd?.walCheckpoint();
+    }
   }
 
   Future<void> _init() async {

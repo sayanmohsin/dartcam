@@ -15,12 +15,21 @@ abstract class ThingdBridge implements RustOpaqueInterface {
     required String body,
   });
 
+  /// Append multiple events to a stream in a single transaction.
+  Future<List<String>> appendEventsBatch({
+    required String stream,
+    required List<(String, String)> events,
+  });
+
   /// Delete the most recent event from a stream.
   /// Returns the deleted event body, or None if the stream was empty.
   Future<String?> deleteLastEvent({required String stream});
 
   /// Delete an object by collection and id. Returns true if deleted.
   Future<bool> deleteObject({required String collection, required String id});
+
+  /// Delete multiple objects in a single transaction. Returns count deleted.
+  Future<BigInt> deleteObjectsBatch({required List<(String, String)> keys});
 
   /// Delete all events in a stream. Returns the count of deleted events.
   Future<BigInt> deleteStream({required String stream});
@@ -31,9 +40,25 @@ abstract class ThingdBridge implements RustOpaqueInterface {
   /// List all events in a stream, in ascending sequence order.
   Future<List<String>> listEvents({required String stream});
 
+  /// List events from a given sequence number. Returns (body, sequence) pairs.
+  ///
+  /// Only returns events with sequence > `from_sequence`, up to `limit`.
+  /// Pass `from_sequence: 0` to get all events. Pass `limit: 0` for no limit.
+  Future<List<(String, BigInt)>> listEventsFrom({
+    required String stream,
+    required BigInt fromSequence,
+    required BigInt limit,
+  });
+
   /// Open or create a thingd store at the given file path.
   static Future<ThingdBridge> open({required String path}) =>
       RustLib.instance.api.crateApiBridgeThingdBridgeOpen(path: path);
+
+  /// Optimize the FTS5 search index to merge segments and reclaim space.
+  ///
+  /// Run periodically (e.g. every 50 matches) to prevent search
+  /// performance degradation from index fragmentation.
+  Future<void> optimizeSearchIndex();
 
   /// Insert or replace an object. Returns the stored body.
   Future<String> putObject({
@@ -41,4 +66,15 @@ abstract class ThingdBridge implements RustOpaqueInterface {
     required String id,
     required String body,
   });
+
+  /// Insert or replace multiple objects in a single transaction.
+  Future<List<String>> putObjectsBatch({
+    required List<(String, String, String)> objects,
+  });
+
+  /// Flush the SQLite WAL into the main database file.
+  ///
+  /// Call this before the app goes to background to prevent data loss.
+  /// Returns `(frames_before, frames_after)` where frames_after should be 0.
+  Future<(int, int)> walCheckpoint();
 }
