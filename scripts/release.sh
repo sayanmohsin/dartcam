@@ -10,7 +10,12 @@ APK_NAME="DartCam-${TAG}.apk"
 BUILD_DIR="build/app/outputs/flutter-apk"
 
 echo "Building APK..."
-flutter build apk --debug
+ENV_FILE=""
+if [ -f ".env" ]; then
+  ENV_FILE="--dart-define-from-file=.env"
+  echo "  Loading cloud config from .env"
+fi
+flutter build apk --debug $ENV_FILE
 
 echo "Renaming APK..."
 cp "${BUILD_DIR}/app-debug.apk" "${BUILD_DIR}/${APK_NAME}"

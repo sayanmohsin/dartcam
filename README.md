@@ -93,10 +93,21 @@ flutter pub get
 flutter run
 ```
 
+### Cloud configuration
+
+Copy `.env.example` to `.env` and fill in your thingd.cloud API key:
+
+```bash
+cp .env.example .env
+```
+
+The `.env` file is gitignored. See [thingd.cloud](https://thingd.cloud) to get an API key.
+
 ### Build release APK
 
 ```bash
-flutter build apk --release
+cp .env.example .env   # if not already configured
+flutter build apk --release --dart-define-from-file=.env
 ```
 
 > The release APK requires a signing key. See [Android signing docs](https://docs.flutter.dev/deployment/android#signing-the-app) for setup.
@@ -107,7 +118,7 @@ flutter build apk --release
 ./scripts/release.sh
 ```
 
-Builds a debug APK and replaces the GitHub release (same download URL).
+Builds a debug APK (with `.env` if present) and replaces the GitHub release (same download URL).
 
 ## Tech Stack
 
