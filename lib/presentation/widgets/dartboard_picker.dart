@@ -103,64 +103,113 @@ class _DartboardPickerState extends State<DartboardPicker>
 
   @override
   Widget build(BuildContext context) {
-    final boardSize = widget.fixedSize ??
-        min(MediaQuery.of(context).size.width, MediaQuery.of(context).size.height) * 0.85;
+    final hasFixedSize = widget.fixedSize != null;
 
     return Container(
       color: const Color(0xFF111215),
       child: SafeArea(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: hasFixedSize ? MainAxisSize.min : MainAxisSize.max,
           children: [
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTapUp: (details) => _handleTap(details, boardSize),
-              child: SizedBox(
-                width: boardSize,
-                height: boardSize,
-                child: Stack(
-                  children: [
-                    AnimatedBuilder(
-                      animation: _glowAnimation,
-                      builder: (context, child) {
-                        return CustomPaint(
-                          painter: _DartboardPainter(
-                            preview: _preview,
-                            hasSelection: _hasSelection,
-                            glowProgress: _glowAnimation.value,
-                          ),
-                        );
-                      },
-                    ),
-                    if (_hasSelection && _preview != null)
-                      Positioned(
-                        top: boardSize * 0.08,
-                        left: boardSize * 0.25,
-                        right: boardSize * 0.25,
-                        child: _buildPopover(boardSize),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: TextButton(
-                onPressed: () => widget.onScore(null),
-                child: const Text(
-                  'MISS',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
+            if (hasFixedSize) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTapUp: (details) => _handleTap(details, widget.fixedSize!),
+                child: SizedBox(
+                  width: widget.fixedSize,
+                  height: widget.fixedSize,
+                  child: Stack(
+                    children: [
+                      _buildBoard(widget.fixedSize!),
+                      if (_hasSelection && _preview != null)
+                        Positioned(
+                          top: widget.fixedSize! * 0.08,
+                          left: widget.fixedSize! * 0.25,
+                          right: widget.fixedSize! * 0.25,
+                          child: _buildPopover(widget.fixedSize!),
+                        ),
+                    ],
                   ),
                 ),
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: TextButton(
+                  onPressed: () => widget.onScore(null),
+                  child: const Text(
+                    'MISS',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ] else ...[
+              Expanded(
+                child: Center(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final size = min(constraints.maxWidth, constraints.maxHeight) * 0.92;
+                      return GestureDetector(
+                        onTapUp: (details) => _handleTap(details, size),
+                        child: SizedBox(
+                          width: size,
+                          height: size,
+                          child: Stack(
+                            children: [
+                              _buildBoard(size),
+                              if (_hasSelection && _preview != null)
+                                Positioned(
+                                  top: size * 0.08,
+                                  left: size * 0.25,
+                                  right: size * 0.25,
+                                  child: _buildPopover(size),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: TextButton(
+                  onPressed: () => widget.onScore(null),
+                  child: const Text(
+                    'MISS',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBoard(double size) {
+    return AnimatedBuilder(
+      animation: _glowAnimation,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _DartboardPainter(
+            preview: _preview,
+            hasSelection: _hasSelection,
+            glowProgress: _glowAnimation.value,
+          ),
+        );
+      },
     );
   }
 

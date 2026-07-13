@@ -282,7 +282,7 @@ class _TurnScreenState extends State<TurnScreen> {
     final activePlayer = state.activePlayer;
 
     return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
