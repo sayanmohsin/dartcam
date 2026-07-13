@@ -244,17 +244,8 @@ class _DetectionScreenState extends State<DetectionScreen>
   }
 
   void _goToManualEntry() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ManualEntryScreen(
-          stateManager: widget.stateManager,
-          onConfirmed: () {
-            Navigator.of(context).pop();
-            widget.onConfirmed();
-          },
-        ),
-      ),
-    );
+    Navigator.of(context).pop();
+    widget.onConfirmed();
   }
 
   @override
