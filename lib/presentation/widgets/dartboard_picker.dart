@@ -15,33 +15,31 @@ class DartboardPicker extends StatefulWidget {
 class _DartboardPickerState extends State<DartboardPicker>
     with SingleTickerProviderStateMixin {
   ManualPickerResult? _preview;
-  bool _isZoomed = false;
+  bool _hasSelection = false;
 
-  late AnimationController _zoomController;
-  late Animation<double> _zoomAnimation;
+  late AnimationController _glowController;
+  late Animation<double> _glowAnimation;
 
   @override
   void initState() {
     super.initState();
-    _zoomController = AnimationController(
+    _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 200),
     );
-    _zoomAnimation = CurvedAnimation(
-      parent: _zoomController,
-      curve: Curves.easeOutBack,
+    _glowAnimation = CurvedAnimation(
+      parent: _glowController,
+      curve: Curves.easeOut,
     );
   }
 
   @override
   void dispose() {
-    _zoomController.dispose();
+    _glowController.dispose();
     super.dispose();
   }
 
   void _handleTap(TapUpDetails details, double widgetSize) {
-    if (_isZoomed) return;
-
     final center = Offset(widgetSize / 2, widgetSize / 2);
     final tapPos = details.localPosition;
 
@@ -62,9 +60,9 @@ class _DartboardPickerState extends State<DartboardPicker>
     if (result != null) {
       setState(() {
         _preview = result;
-        _isZoomed = true;
+        _hasSelection = true;
       });
-      _zoomController.forward(from: 0);
+      _glowController.forward(from: 0);
     }
   }
 
@@ -102,14 +100,10 @@ class _DartboardPickerState extends State<DartboardPicker>
     }
   }
 
-  void _cancel() {
-    _zoomController.reverse().then((_) {
-      if (mounted) {
-        setState(() {
-          _preview = null;
-          _isZoomed = false;
-        });
-      }
+  void _clearSelection() {
+    setState(() {
+      _preview = null;
+      _hasSelection = false;
     });
   }
 
@@ -121,9 +115,9 @@ class _DartboardPickerState extends State<DartboardPicker>
         child: Column(
           children: [
             const SizedBox(height: 12),
-            const Text(
-              'Tap the board to score',
-              style: TextStyle(
+            Text(
+              _hasSelection ? 'Review or tap a different section' : 'Tap the board to score',
+              style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -142,13 +136,13 @@ class _DartboardPickerState extends State<DartboardPicker>
                         width: size,
                         height: size,
                         child: AnimatedBuilder(
-                          animation: _zoomAnimation,
+                          animation: _glowAnimation,
                           builder: (context, child) {
                             return CustomPaint(
                               painter: _DartboardPainter(
                                 preview: _preview,
-                                isZoomed: _isZoomed,
-                                zoomProgress: _zoomAnimation.value,
+                                hasSelection: _hasSelection,
+                                glowProgress: _glowAnimation.value,
                               ),
                             );
                           },
@@ -159,23 +153,22 @@ class _DartboardPickerState extends State<DartboardPicker>
                 ),
               ),
             ),
-            if (_isZoomed && _preview != null) _buildConfirmBar(),
-            if (!_isZoomed)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: TextButton(
-                  onPressed: () => widget.onScore(null),
-                  child: const Text(
-                    'MISS',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
+            if (_hasSelection && _preview != null) _buildConfirmBar(),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: TextButton(
+                onPressed: () => widget.onScore(null),
+                child: const Text(
+                  'MISS',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -186,7 +179,7 @@ class _DartboardPickerState extends State<DartboardPicker>
     final label = _preview!.label;
     final totalScore = _preview!.score * _preview!.multiplier;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
       child: Column(
         children: [
           Container(
@@ -234,14 +227,14 @@ class _DartboardPickerState extends State<DartboardPicker>
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _cancel,
+                  onPressed: _clearSelection,
                   icon: const Icon(Icons.refresh, size: 20),
-                  label: const Text('Retry'),
+                  label: const Text('Change'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white70,
                     side: const BorderSide(color: Colors.grey),
@@ -273,13 +266,13 @@ class _DartboardPickerState extends State<DartboardPicker>
 
 class _DartboardPainter extends CustomPainter {
   final ManualPickerResult? preview;
-  final bool isZoomed;
-  final double zoomProgress;
+  final bool hasSelection;
+  final double glowProgress;
 
   _DartboardPainter({
     required this.preview,
-    required this.isZoomed,
-    required this.zoomProgress,
+    required this.hasSelection,
+    required this.glowProgress,
   });
 
   @override
@@ -287,192 +280,109 @@ class _DartboardPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final boardRadius = size.width / 2;
     final mmPerPx = DartboardConstants.boardRadius / boardRadius;
+    final numberRingRadius = boardRadius * 1.08;
 
-    if (isZoomed && preview != null) {
-      _drawZoomedWedge(canvas, size, center);
-    } else {
-      final numberRingRadius = boardRadius * 1.08;
-      _drawBoard(canvas, center, boardRadius, mmPerPx);
-      _drawWires(canvas, center, boardRadius, mmPerPx);
-      _drawNumbers(canvas, center, numberRingRadius);
+    _drawBoard(canvas, center, boardRadius, mmPerPx);
+    _drawWires(canvas, center, boardRadius, mmPerPx);
+
+    if (hasSelection && preview != null) {
+      _drawHighlight(canvas, size, center);
     }
+
+    _drawNumbers(canvas, center, numberRingRadius);
   }
 
-  void _drawZoomedWedge(Canvas canvas, Size size, Offset center) {
+  void _drawHighlight(Canvas canvas, Size size, Offset center) {
     if (preview == null) return;
+
+    final isBull = preview!.label == 'BULL' || preview!.label == '25';
+    if (isBull) {
+      _drawHighlightedBull(canvas, center, size);
+      return;
+    }
 
     final wedgeAngle = DartboardConstants.wedgeAngleDegrees * pi / 180;
     final wedgeIndex = DartboardConstants.wedgeValues
         .indexOf(preview!.score >= 0 && preview!.score <= 20 ? preview!.score : -1);
-
-    final isBull = preview!.label == 'BULL' || preview!.label == '25';
-    if (isBull) {
-      _drawZoomedBull(canvas, size, center);
-      return;
-    }
-
     if (wedgeIndex < 0) return;
 
-    final isEvenWedge = wedgeIndex % 2 == 0;
+    final boardRadius = size.width / 2;
+    final mmPerPx = DartboardConstants.boardRadius / boardRadius;
 
-    final drawRadius = size.width * 0.38;
-    final halfWedge = wedgeAngle / 2;
+    final startAngle = wedgeIndex * wedgeAngle - pi / 2 - wedgeAngle / 2;
+    final endAngle = startAngle + wedgeAngle;
 
+    // Determine inner and outer radius based on multiplier
     final double innerRadius, outerRadius;
-    final Color wedgeColor;
-
     switch (preview!.multiplier) {
       case 3:
-        innerRadius = drawRadius * 0.55;
-        outerRadius = drawRadius * 0.65;
-        wedgeColor = isEvenWedge
-            ? const Color(0xFF006400)
-            : const Color(0xFFC41E3A);
+        innerRadius = DartboardConstants.tripleInnerRadius / mmPerPx;
+        outerRadius = DartboardConstants.tripleOuterRadius / mmPerPx;
       case 2:
-        innerRadius = drawRadius * 0.88;
-        outerRadius = drawRadius;
-        wedgeColor = isEvenWedge
-            ? const Color(0xFFC41E3A)
-            : const Color(0xFF006400);
+        innerRadius = DartboardConstants.doubleInnerRadius / mmPerPx;
+        outerRadius = DartboardConstants.doubleOuterRadius / mmPerPx;
       default:
-        if (preview!.score == 25) {
-          innerRadius = drawRadius * 0.12;
-          outerRadius = drawRadius * 0.22;
-          wedgeColor = const Color(0xFFC41E3A);
-        } else {
-          innerRadius = drawRadius * 0.22;
-          outerRadius = drawRadius * 0.55;
-          wedgeColor = isEvenWedge
-              ? const Color(0xFFF5F0E1)
-              : const Color(0xFF2D2D2D);
-        }
+        innerRadius = DartboardConstants.bullseyeOuterRadius / mmPerPx;
+        outerRadius = DartboardConstants.tripleInnerRadius / mmPerPx;
     }
 
-    final startAngle = -pi / 2 - halfWedge;
-    final endAngle = -pi / 2 + halfWedge;
-
-    final path = Path();
-    path.moveTo(
+    // Draw the highlighted area with a neon orange overlay
+    final highlightPath = Path();
+    highlightPath.moveTo(
       center.dx + innerRadius * cos(startAngle),
       center.dy + innerRadius * sin(startAngle),
     );
-    path.arcTo(
+    highlightPath.arcTo(
       Rect.fromCircle(center: center, radius: innerRadius),
       startAngle,
       wedgeAngle,
       false,
     );
-    path.lineTo(
+    highlightPath.lineTo(
       center.dx + outerRadius * cos(endAngle),
       center.dy + outerRadius * sin(endAngle),
     );
-    path.arcTo(
+    highlightPath.arcTo(
       Rect.fromCircle(center: center, radius: outerRadius),
       endAngle,
       -wedgeAngle,
       false,
     );
-    path.close();
+    highlightPath.close();
 
-    canvas.drawPath(path, Paint()..color = wedgeColor);
+    final fillPaint = Paint()
+      ..color = const Color(0xFFFF6D00).withOpacity(0.25 * glowProgress);
+    canvas.drawPath(highlightPath, fillPaint);
 
     final glowPaint = Paint()
-      ..color = const Color(0xFFFF6D00).withOpacity(0.6 * zoomProgress)
+      ..color = const Color(0xFFFF6D00).withOpacity(0.8 * glowProgress)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
-    canvas.drawPath(path, glowPaint);
-
-    final label = preview!.label;
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        center.dx - textPainter.width / 2,
-        center.dy - textPainter.height / 2 - 20,
-      ),
-    );
-
-    final scorePainter = TextPainter(
-      text: TextSpan(
-        text: '${preview!.score * preview!.multiplier} pts',
-        style: const TextStyle(
-          color: Color(0xFFFF6D00),
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    scorePainter.paint(
-      canvas,
-      Offset(
-        center.dx - scorePainter.width / 2,
-        center.dy + 10,
-      ),
-    );
+    canvas.drawPath(highlightPath, glowPaint);
   }
 
-  void _drawZoomedBull(Canvas canvas, Size size, Offset center) {
-    final drawRadius = size.width * 0.35;
+  void _drawHighlightedBull(Canvas canvas, Offset center, Size size) {
+    if (preview == null) return;
 
-    final isDoubleBull = preview!.score == 50;
-    final bullColor =
-        isDoubleBull ? const Color(0xFF006400) : const Color(0xFFC41E3A);
+    final boardRadius = size.width / 2;
+    final mmPerPx = DartboardConstants.boardRadius / boardRadius;
+    final radius = (preview!.score == 50
+            ? DartboardConstants.bullseyeInnerRadius
+            : DartboardConstants.bullseyeOuterRadius) /
+        mmPerPx;
 
-    canvas.drawCircle(center, drawRadius, Paint()..color = bullColor);
-
-    final glowPaint = Paint()
-      ..color = const Color(0xFFFF6D00).withOpacity(0.6 * zoomProgress)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-    canvas.drawCircle(center, drawRadius, glowPaint);
-
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: preview!.label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 36,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        center.dx - textPainter.width / 2,
-        center.dy - textPainter.height / 2 - 10,
-      ),
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()..color = const Color(0xFFFF6D00).withOpacity(0.25 * glowProgress),
     );
-
-    final scorePainter = TextPainter(
-      text: TextSpan(
-        text: '${preview!.score * preview!.multiplier} pts',
-        style: const TextStyle(
-          color: Color(0xFFFF6D00),
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    scorePainter.paint(
-      canvas,
-      Offset(
-        center.dx - scorePainter.width / 2,
-        center.dy + 20,
-      ),
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = const Color(0xFFFF6D00).withOpacity(0.8 * glowProgress)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
     );
   }
 
@@ -658,7 +568,7 @@ class _DartboardPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DartboardPainter oldDelegate) {
     return oldDelegate.preview != preview ||
-        oldDelegate.isZoomed != isZoomed ||
-        oldDelegate.zoomProgress != zoomProgress;
+        oldDelegate.hasSelection != hasSelection ||
+        oldDelegate.glowProgress != glowProgress;
   }
 }
