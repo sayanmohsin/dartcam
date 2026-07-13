@@ -243,11 +243,14 @@ class _TurnScreenState extends State<TurnScreen> {
                 }),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: DartboardPicker(
-                onScore: _handleScore,
-                fixedSize: boardSize,
+            Container(
+              color: const Color(0xFF111215),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: DartboardPicker(
+                  onScore: _handleScore,
+                  fixedSize: boardSize,
+                ),
               ),
             ),
             if (allFilled)

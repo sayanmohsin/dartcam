@@ -192,9 +192,10 @@ class _DartboardPickerState extends State<DartboardPicker>
       ],
     );
 
+    if (hasFixedSize) return content;
     return Container(
       color: const Color(0xFF111215),
-      child: hasFixedSize ? content : SafeArea(child: content),
+      child: SafeArea(child: content),
     );
   }
 
