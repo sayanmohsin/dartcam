@@ -136,6 +136,7 @@ class _TurnScreenState extends State<TurnScreen> {
             : null,
       ),
       body: ValueListenableBuilder(
+        key: ValueKey(_showDartboard),
         valueListenable: widget.stateManager,
         builder: (context, state, child) {
           if (state.isCompleted) {

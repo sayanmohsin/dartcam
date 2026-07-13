@@ -103,49 +103,43 @@ class _DartboardPickerState extends State<DartboardPicker>
 
   @override
   Widget build(BuildContext context) {
+    final boardSize = widget.fixedSize ??
+        min(MediaQuery.of(context).size.width, MediaQuery.of(context).size.height) * 0.85;
+
     return Container(
       color: const Color(0xFF111215),
       child: SafeArea(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            Expanded(
-              child: Center(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final size = widget.fixedSize ??
-                        min(constraints.maxWidth, constraints.maxHeight) * 0.92;
-                    return GestureDetector(
-                      onTapUp: (details) => _handleTap(details, size),
-                      child: SizedBox(
-                        width: size,
-                        height: size,
-                        child: Stack(
-                          children: [
-                            AnimatedBuilder(
-                              animation: _glowAnimation,
-                              builder: (context, child) {
-                                return CustomPaint(
-                                  painter: _DartboardPainter(
-                                    preview: _preview,
-                                    hasSelection: _hasSelection,
-                                    glowProgress: _glowAnimation.value,
-                                  ),
-                                );
-                              },
-                            ),
-                            if (_hasSelection && _preview != null)
-                              Positioned(
-                                top: size * 0.08,
-                                left: size * 0.25,
-                                right: size * 0.25,
-                                child: _buildPopover(size),
-                              ),
-                          ],
-                        ),
+            GestureDetector(
+              onTapUp: (details) => _handleTap(details, boardSize),
+              child: SizedBox(
+                width: boardSize,
+                height: boardSize,
+                child: Stack(
+                  children: [
+                    AnimatedBuilder(
+                      animation: _glowAnimation,
+                      builder: (context, child) {
+                        return CustomPaint(
+                          painter: _DartboardPainter(
+                            preview: _preview,
+                            hasSelection: _hasSelection,
+                            glowProgress: _glowAnimation.value,
+                          ),
+                        );
+                      },
+                    ),
+                    if (_hasSelection && _preview != null)
+                      Positioned(
+                        top: boardSize * 0.08,
+                        left: boardSize * 0.25,
+                        right: boardSize * 0.25,
+                        child: _buildPopover(boardSize),
                       ),
-                    );
-                  },
+                  ],
                 ),
               ),
             ),
