@@ -52,7 +52,14 @@ class _DartboardPickerState extends State<DartboardPicker>
     final distanceMm = distance * mmPerPx;
 
     if (distanceMm > DartboardConstants.doubleOuterRadius + 5) {
-      widget.onScore(null);
+      if (_hasSelection) {
+        setState(() {
+          _preview = null;
+          _hasSelection = false;
+        });
+      } else {
+        widget.onScore(null);
+      }
       return;
     }
 
@@ -207,6 +214,27 @@ class _DartboardPickerState extends State<DartboardPicker>
                 child: const Icon(
                   Icons.check,
                   color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _preview = null;
+                  _hasSelection = false;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF424242),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white70,
                   size: 18,
                 ),
               ),
