@@ -153,128 +153,130 @@ class _TurnScreenState extends State<TurnScreen> {
 
   Widget _buildDartboardView(DartMatchState state) {
     final allFilled = _allDartsFilled;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${state.activePlayer.currentScore} remaining',
-                style: const TextStyle(color: Colors.white54, fontSize: 14),
-              ),
-              Text(
-                'Turn: $_turnTotal',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(3, (index) {
-              final dart = _darts[index];
-              final isActive = index == _currentDart && index < 3;
-              final isFilled = dart != null;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: isActive ? 48 : 40,
-                  height: isActive ? 48 : 40,
-                  decoration: BoxDecoration(
-                    color: isFilled
-                        ? kNeonOrange
-                        : (isActive ? kInputBg : const Color(0xFF1A1A1A)),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isActive
-                          ? kNeonOrangeGlow
-                          : (isFilled
-                              ? kNeonOrange.withOpacity(0.5)
-                              : Colors.grey[800]!),
-                      width: isActive ? 2.5 : 1.5,
+    final boardSize = MediaQuery.of(context).size.width * 0.92;
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${state.activePlayer.currentScore} remaining',
+                    style: const TextStyle(color: Colors.white54, fontSize: 14),
+                  ),
+                  Text(
+                    'Turn: $_turnTotal',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  child: isFilled
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              dart!.label,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              '${dart.totalScore}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 9,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              color: isActive ? Colors.white38 : Colors.grey[700],
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (index) {
+                  final dart = _darts[index];
+                  final isActive = index == _currentDart && index < 3;
+                  final isFilled = dart != null;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: isActive ? 48 : 40,
+                      height: isActive ? 48 : 40,
+                      decoration: BoxDecoration(
+                        color: isFilled
+                            ? kNeonOrange
+                            : (isActive ? kInputBg : const Color(0xFF1A1A1A)),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isActive
+                              ? kNeonOrangeGlow
+                              : (isFilled
+                                  ? kNeonOrange.withOpacity(0.5)
+                                  : Colors.grey[800]!),
+                          width: isActive ? 2.5 : 1.5,
                         ),
-                ),
-              );
-            }),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Expanded(
-          child: Center(
-            child: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.92,
-              height: MediaQuery.of(context).size.width * 0.92,
-              child: DartboardPicker(
-                onScore: _handleScore,
-                fixedSize: MediaQuery.of(context).size.width * 0.92,
+                      ),
+                      child: isFilled
+                          ? Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  dart!.label,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  '${dart.totalScore}',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 9,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Center(
+                              child: Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  color: isActive ? Colors.white38 : Colors.grey[700],
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                    ),
+                  );
+                }),
               ),
             ),
-          ),
-        ),
-        if (allFilled)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _submitTurn,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kNeonOrange,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: Text(
-                  'ADD SCORE — $_turnTotal',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: SizedBox(
+                width: boardSize,
+                height: boardSize,
+                child: DartboardPicker(
+                  onScore: _handleScore,
+                  fixedSize: boardSize,
                 ),
               ),
             ),
-          )
-        else
-          const SizedBox(height: 16),
-      ],
+            if (allFilled)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _submitTurn,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kNeonOrange,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      'ADD SCORE — $_turnTotal',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
