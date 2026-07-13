@@ -241,7 +241,13 @@ class _TurnScreenState extends State<TurnScreen> {
         ),
         const SizedBox(height: 4),
         Expanded(
-          child: DartboardPicker(onScore: _handleScore),
+          child: Center(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.92,
+              height: MediaQuery.of(context).size.width * 0.92,
+              child: DartboardPicker(onScore: _handleScore),
+            ),
+          ),
         ),
         if (allFilled)
           Padding(
@@ -264,7 +270,21 @@ class _TurnScreenState extends State<TurnScreen> {
             ),
           )
         else
-          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: TextButton(
+              onPressed: () => _handleScore(null),
+              child: const Text(
+                'MISS',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
