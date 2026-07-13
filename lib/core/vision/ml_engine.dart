@@ -57,36 +57,26 @@ MLResult? _processDetection(Uint8List imageBytes, IsolateInterpreter interpreter
       ),
     );
 
-    final output1 = List<List<List<List<double>>>>.filled(
-      1,
-      List<List<List<double>>>.filled(
-        50,
-        List<List<double>>.filled(
-          50,
-          List<double>.filled(30, 0),
-        ),
-      ),
-    );
-    final output2 = List<List<List<List<double>>>>.filled(
-      1,
-      List<List<List<double>>>.filled(
-        25,
-        List<List<double>>.filled(
-          25,
-          List<double>.filled(30, 0),
-        ),
-      ),
-    );
+    final output1 = List.generate(1, (_) =>
+        List.generate(50, (_) =>
+            List.generate(50, (_) =>
+                List<double>.filled(30, 0))));
+    final output2 = List.generate(1, (_) =>
+        List.generate(25, (_) =>
+            List.generate(25, (_) =>
+                List<double>.filled(30, 0))));
 
     interpreter.runForMultipleInputs([input], {0: output1, 1: output2});
 
     final allBoxes = <YoloBox>[];
-    allBoxes.addAll(_decodeOutput(output1, 16, _anchorsStride16));
-    allBoxes.addAll(_decodeOutput(output2, 32, _anchorsStride32));
+    allBoxes.addAll(decodeOutput(output1, 16, _anchorsStride16));
+    allBoxes.addAll(decodeOutput(output2, 32, _anchorsStride32));
 
-    final nmsBoxes = _nms(allBoxes, 0.45);
-    return _extractKeypoints(nmsBoxes);
-  } catch (_) {
+    final nmsBoxes = nms(allBoxes, 0.45);
+    return extractKeypoints(nmsBoxes);
+  } catch (e, st) {
+    print('MLEngine._processDetection error: $e');
+    print(st);
     return null;
   }
 }
@@ -133,7 +123,7 @@ class MLEngine {
 
 // ---------- YOLOV4-TINY DECODING ----------
 
-List<YoloBox> _decodeOutput(
+List<YoloBox> decodeOutput(
   List<List<List<List<double>>>> rawOutput,
   int stride,
   List<List<int>> anchors,
@@ -148,16 +138,16 @@ List<YoloBox> _decodeOutput(
         final cell = rawOutput[0][gy][gx];
         final offset = a * 10;
 
-        final tx = _sigmoid(cell[offset]);
-        final ty = _sigmoid(cell[offset + 1]);
+        final tx = sigmoid(cell[offset]);
+        final ty = sigmoid(cell[offset + 1]);
         final tw = cell[offset + 2];
         final th = cell[offset + 3];
-        final obj = _sigmoid(cell[offset + 4]);
+        final obj = sigmoid(cell[offset + 4]);
 
         double bestScore = 0;
         int bestClass = 0;
         for (int c = 0; c < 5; c++) {
-          final score = _sigmoid(cell[offset + 5 + c]) * obj;
+          final score = sigmoid(cell[offset + 5 + c]) * obj;
           if (score > bestScore) {
             bestScore = score;
             bestClass = c;
@@ -181,7 +171,7 @@ List<YoloBox> _decodeOutput(
 
 // ---------- NON-MAXIMUM SUPPRESSION ----------
 
-List<YoloBox> _nms(List<YoloBox> boxes, double iouThreshold) {
+List<YoloBox> nms(List<YoloBox> boxes, double iouThreshold) {
   if (boxes.isEmpty) return [];
 
   final output = <YoloBox>[];
@@ -196,7 +186,7 @@ List<YoloBox> _nms(List<YoloBox> boxes, double iouThreshold) {
       output.add(best);
 
       remaining.removeWhere(
-        (box) => _computeIoU(best, box) >= iouThreshold,
+        (box) => computeIoU(best, box) >= iouThreshold,
       );
     }
   }
@@ -204,7 +194,7 @@ List<YoloBox> _nms(List<YoloBox> boxes, double iouThreshold) {
   return output;
 }
 
-double _computeIoU(YoloBox a, YoloBox b) {
+double computeIoU(YoloBox a, YoloBox b) {
   final aLeft = a.x - a.w / 2;
   final aTop = a.y - a.h / 2;
   final aRight = a.x + a.w / 2;
@@ -229,7 +219,7 @@ double _computeIoU(YoloBox a, YoloBox b) {
 
 // ---------- KEYPOINT EXTRACTION ----------
 
-MLResult _extractKeypoints(List<YoloBox> boxes) {
+MLResult extractKeypoints(List<YoloBox> boxes) {
   final dartTips = <Offset>[];
   final calibrationPoints = List<Offset?>.filled(4, null);
 
@@ -252,7 +242,7 @@ MLResult _extractKeypoints(List<YoloBox> boxes) {
 
 // ---------- MATH HELPERS ----------
 
-double _sigmoid(double x) {
+double sigmoid(double x) {
   return 1.0 / (1.0 + exp(-x.clamp(-88, 88)));
 }
 
