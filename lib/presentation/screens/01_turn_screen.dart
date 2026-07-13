@@ -246,6 +246,7 @@ class _TurnScreenState extends State<TurnScreen> {
               height: MediaQuery.of(context).size.width * 0.92,
               child: DartboardPicker(
                 onScore: _handleScore,
+                fixedSize: MediaQuery.of(context).size.width * 0.92,
               ),
             ),
           ),
