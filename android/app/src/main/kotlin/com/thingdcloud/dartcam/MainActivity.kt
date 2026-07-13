@@ -1,4 +1,4 @@
-package com.example.local_dart_scorer
+package com.thingdcloud.dartcam
 
 import io.flutter.embedding.android.FlutterActivity
 
