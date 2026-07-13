@@ -47,6 +47,7 @@ class _DetectionScreenState extends State<DetectionScreen>
   bool _isConfirmed = false;
   bool _noDartsDetected = false;
   bool _boardNotDetected = false;
+  MLResult? _lastResult;
 
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
@@ -131,6 +132,7 @@ class _DetectionScreenState extends State<DetectionScreen>
 
       if (!result.hasAllCalibrationPoints) {
         setState(() {
+          _lastResult = result;
           _boardNotDetected = true;
           _isProcessing = false;
         });
@@ -511,6 +513,11 @@ class _DetectionScreenState extends State<DetectionScreen>
   }
 
   Widget _buildBoardNotDetectedView() {
+    final calCount = _lastResult?.calibrationPoints.length ?? 0;
+    final dartCount = _lastResult?.dartTips.length ?? 0;
+    final boxCount = _lastResult?.rawBoxCount ?? 0;
+    final nmsCount = _lastResult?.nmsBoxCount ?? 0;
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -523,10 +530,10 @@ class _DetectionScreenState extends State<DetectionScreen>
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.crop_free, color: Colors.white54, size: 48),
-                SizedBox(height: 16),
-                Text(
+              children: [
+                const Icon(Icons.crop_free, color: Colors.white54, size: 48),
+                const SizedBox(height: 16),
+                const Text(
                   'Board not fully visible',
                   style: TextStyle(
                     color: Colors.white,
@@ -534,11 +541,18 @@ class _DetectionScreenState extends State<DetectionScreen>
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
-                  'Make sure the entire dartboard\nis visible in the frame',
+                  'Calibration points: $calCount/4\n'
+                  'Dart tips: $dartCount\n'
+                  'Raw detections: $boxCount → $nmsCount after NMS',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white54, fontSize: 14),
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                    height: 1.5,
+                  ),
                 ),
               ],
             ),
