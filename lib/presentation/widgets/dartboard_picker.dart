@@ -313,6 +313,8 @@ class _DartboardPainter extends CustomPainter {
     final endAngle = startAngle + wedgeAngle;
 
     // Determine inner and outer radius based on multiplier
+    // For singles: highlight the entire wedge (both outer and inner single bands)
+    // For triples/doubles: highlight just that ring
     final double innerRadius, outerRadius;
     switch (preview!.multiplier) {
       case 3:
@@ -323,7 +325,7 @@ class _DartboardPainter extends CustomPainter {
         outerRadius = DartboardConstants.doubleOuterRadius / mmPerPx;
       default:
         innerRadius = DartboardConstants.bullseyeOuterRadius / mmPerPx;
-        outerRadius = DartboardConstants.tripleInnerRadius / mmPerPx;
+        outerRadius = DartboardConstants.doubleInnerRadius / mmPerPx;
     }
 
     // Draw the highlighted area with a neon orange overlay

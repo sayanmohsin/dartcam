@@ -600,24 +600,29 @@ class ManualEntryScreen extends StatefulWidget {
 
 class _ManualEntryScreenState extends State<ManualEntryScreen> {
   final List<ScoredDart?> _darts = [null, null, null];
+  int _selectedDartIndex = -1;
   bool _isConfirmed = false;
 
   int get _turnTotal => _darts.fold(0, (sum, d) => sum + (d?.totalScore ?? 0));
   int get _dartCount => _darts.where((d) => d != null && d.totalScore > 0).length;
 
-  Future<void> _editDart(int index) async {
-    final result = await showModalBottomSheet<ManualPickerResult>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DartboardPicker(
-        onScore: (score) => Navigator.of(context).pop(score),
-      ),
-    );
+  void _selectSlot(int index) {
+    setState(() {
+      _selectedDartIndex = index;
+    });
+  }
 
-    if (result != null) {
+  void _handleScore(ManualPickerResult? result) {
+    if (_selectedDartIndex < 0) return;
+
+    if (result == null) {
+      // Miss
       setState(() {
-        _darts[index] = ScoredDart(
+        _darts[_selectedDartIndex] = const ScoredDart(score: 0, multiplier: 1, label: '0');
+      });
+    } else {
+      setState(() {
+        _darts[_selectedDartIndex] = ScoredDart(
           score: result.score,
           multiplier: result.multiplier,
           label: result.label,
@@ -677,94 +682,121 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
         ),
         title: const Text('Enter Score', style: TextStyle(color: Colors.white)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Text(
-              widget.stateManager.value.activePlayer.name.toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${widget.stateManager.value.activePlayer.currentScore} remaining',
-              style: const TextStyle(color: Colors.white54, fontSize: 16),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (index) {
-                final dart = _darts[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: GestureDetector(
-                    onTap: () => _editDart(index),
-                    child: Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: dart != null ? kNeonOrange : kInputBg,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: dart != null ? kNeonOrangeGlow : Colors.grey[700]!,
-                          width: 2,
+      body: Column(
+        children: [
+          // Top section: player info + slots + total
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: Column(
+              children: [
+                Text(
+                  widget.stateManager.value.activePlayer.name.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${widget.stateManager.value.activePlayer.currentScore} remaining',
+                  style: const TextStyle(color: Colors.white54, fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (index) {
+                    final dart = _darts[index];
+                    final isSelected = index == _selectedDartIndex;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: GestureDetector(
+                        onTap: () => _selectSlot(index),
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: dart != null ? kNeonOrange : kInputBg,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? kNeonOrangeGlow
+                                  : (dart != null ? kNeonOrange.withOpacity(0.5) : Colors.grey[700]!),
+                              width: isSelected ? 3 : 2,
+                            ),
+                          ),
+                          child: dart != null
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      dart.label,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${dart.totalScore}',
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add, color: Colors.grey[600], size: 24),
+                                    Text(
+                                      'Dart ${index + 1}',
+                                      style: TextStyle(color: Colors.grey[600], fontSize: 10),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
-                      child: dart != null
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  dart.label,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${dart.totalScore}',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add, color: Colors.grey[600], size: 28),
-                                Text(
-                                  'Dart ${index + 1}',
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
-                                ),
-                              ],
-                            ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Turn Total: $_turnTotal',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (_selectedDartIndex >= 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Tap the board to score Dart ${_selectedDartIndex + 1}',
+                      style: const TextStyle(color: kNeonOrange, fontSize: 12),
                     ),
                   ),
-                );
-              }),
+              ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Turn Total: $_turnTotal',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+          ),
+
+          // Middle: inline dartboard picker
+          Expanded(
+            child: DartboardPicker(
+              onScore: _handleScore,
             ),
-            const Spacer(),
-            SizedBox(
+          ),
+
+          // Bottom: ADD SCORE button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            child: SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 52,
               child: ElevatedButton(
                 onPressed: _dartCount > 0 ? _confirmScore : null,
                 style: ElevatedButton.styleFrom(
@@ -775,13 +807,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 ),
                 child: const Text(
                   'ADD SCORE',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2),
                 ),
               ),
             ),
-            const SizedBox(height: 32),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
