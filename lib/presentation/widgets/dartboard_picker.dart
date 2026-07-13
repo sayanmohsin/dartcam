@@ -136,21 +136,6 @@ class _DartboardPickerState extends State<DartboardPicker>
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: TextButton(
-                onPressed: () => widget.onScore(null),
-                child: const Text(
-                  'MISS',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -162,6 +147,7 @@ class _DartboardPickerState extends State<DartboardPicker>
       animation: _glowAnimation,
       builder: (context, child) {
         return CustomPaint(
+          size: Size(size, size),
           painter: _DartboardPainter(
             preview: _preview,
             hasSelection: _hasSelection,
