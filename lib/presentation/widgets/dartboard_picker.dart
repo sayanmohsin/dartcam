@@ -5,8 +5,9 @@ import 'manual_picker_grid.dart' show ManualPickerResult;
 
 class DartboardPicker extends StatefulWidget {
   final void Function(ManualPickerResult?) onScore;
+  final double? fixedSize;
 
-  const DartboardPicker({super.key, required this.onScore});
+  const DartboardPicker({super.key, required this.onScore, this.fixedSize});
 
   @override
   State<DartboardPicker> createState() => _DartboardPickerState();
@@ -71,7 +72,7 @@ class _DartboardPickerState extends State<DartboardPicker>
     double dx,
     double dy,
   ) {
-    final angle = atan2(-dx, -dy) * 180 / pi;
+    final angle = atan2(dx, -dy) * 180 / pi;
     final normalizedAngle = (angle + 360) % 360;
     final wedgeIndex =
         (normalizedAngle / DartboardConstants.wedgeAngleDegrees).floor() % 20;
@@ -128,7 +129,7 @@ class _DartboardPickerState extends State<DartboardPicker>
               child: Center(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final size =
+                    final size = widget.fixedSize ??
                         min(constraints.maxWidth, constraints.maxHeight) * 0.92;
                     return GestureDetector(
                       onTapUp: (details) => _handleTap(details, size),
