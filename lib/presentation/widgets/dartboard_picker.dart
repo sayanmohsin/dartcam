@@ -105,92 +105,79 @@ class _DartboardPickerState extends State<DartboardPicker>
   Widget build(BuildContext context) {
     final hasFixedSize = widget.fixedSize != null;
 
-    final content = Column(
-      mainAxisSize: hasFixedSize ? MainAxisSize.min : MainAxisSize.max,
-      children: [
-        if (hasFixedSize) ...[
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTapUp: (details) => _handleTap(details, widget.fixedSize!),
-            child: SizedBox(
-              width: widget.fixedSize,
-              height: widget.fixedSize,
-              child: Stack(
-                children: [
-                  _buildBoard(widget.fixedSize!),
-                  if (_hasSelection && _preview != null)
-                    Positioned(
-                      top: widget.fixedSize! * 0.08,
-                      left: widget.fixedSize! * 0.25,
-                      right: widget.fixedSize! * 0.25,
-                      child: _buildPopover(widget.fixedSize!),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 24),
-            child: TextButton(
-              onPressed: () => widget.onScore(null),
-              child: const Text(
-                'MISS',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
+    final content = hasFixedSize
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTapUp: (details) => _handleTap(details, widget.fixedSize!),
+                child: SizedBox(
+                  width: widget.fixedSize,
+                  height: widget.fixedSize,
+                  child: Stack(
+                    children: [
+                      _buildBoard(widget.fixedSize!),
+                      if (_hasSelection && _preview != null)
+                        Positioned(
+                          top: widget.fixedSize! * 0.08,
+                          left: widget.fixedSize! * 0.25,
+                          right: widget.fixedSize! * 0.25,
+                          child: _buildPopover(widget.fixedSize!),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ),
-        ] else ...[
-          Expanded(
-            child: Center(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final size = min(constraints.maxWidth, constraints.maxHeight) * 0.92;
-                  return GestureDetector(
-                    onTapUp: (details) => _handleTap(details, size),
-                    child: SizedBox(
-                      width: size,
-                      height: size,
-                      child: Stack(
-                        children: [
-                          _buildBoard(size),
-                          if (_hasSelection && _preview != null)
-                            Positioned(
-                              top: size * 0.08,
-                              left: size * 0.25,
-                              right: size * 0.25,
-                              child: _buildPopover(size),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 24),
-            child: TextButton(
-              onPressed: () => widget.onScore(null),
-              child: const Text(
-                'MISS',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
+            ],
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              Expanded(
+                child: Center(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final size = min(constraints.maxWidth, constraints.maxHeight) * 0.92;
+                      return GestureDetector(
+                        onTapUp: (details) => _handleTap(details, size),
+                        child: SizedBox(
+                          width: size,
+                          height: size,
+                          child: Stack(
+                            children: [
+                              _buildBoard(size),
+                              if (_hasSelection && _preview != null)
+                                Positioned(
+                                  top: size * 0.08,
+                                  left: size * 0.25,
+                                  right: size * 0.25,
+                                  child: _buildPopover(size),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
-      ],
-    );
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: TextButton(
+                  onPressed: () => widget.onScore(null),
+                  child: const Text(
+                    'MISS',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
 
     if (hasFixedSize) return content;
     return Container(

@@ -243,13 +243,20 @@ class _TurnScreenState extends State<TurnScreen> {
                 }),
               ),
             ),
-            Container(
-              color: const Color(0xFF111215),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: DartboardPicker(
-                  onScore: _handleScore,
-                  fixedSize: boardSize,
+            DartboardPicker(
+              onScore: _handleScore,
+              fixedSize: boardSize,
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => _handleScore(null),
+              child: const Text(
+                'MISS',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
                 ),
               ),
             ),

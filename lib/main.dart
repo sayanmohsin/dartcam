@@ -24,7 +24,12 @@ const kInputBg = Color(0xFF2A2A2A);
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   FlutterError.onError = (details) {
-    debugPrint('Unhandled Flutter error: ${details.exception}');
+    debugPrint('=== FLUTTER ERROR ===');
+    debugPrint('${details.exceptionAsString()}');
+    debugPrint('Library: ${details.library}');
+    debugPrint('Context: ${details.context}');
+    debugPrint('Stack:\n${details.stack}');
+    debugPrint('=== END ERROR ===');
   };
   ui.PlatformDispatcher.instance.onError = (error, stack) {
     debugPrint('Unhandled platform error: $error');
