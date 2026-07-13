@@ -125,10 +125,11 @@ Builds a debug APK (with `.env` if present) and replaces the GitHub release (sam
 | Layer | Technology |
 |-------|-----------|
 | Framework | Flutter (Dart) |
-| Camera | image_picker |
-| Image processing | Pure Dart (image package) |
+| Camera | camera (CameraX on Android, AVFoundation on iOS) |
+| ML detection | TFLite via tflite_flutter (DeepDarts D2 model) |
 | State management | ValueNotifier + MatchStateManager |
-| Persistence | shared_preferences |
+| Local persistence | thingd (embedded Rust SQLite via FRB) |
+| Cloud sync (optional) | thingd.cloud REST API |
 | SVG icons | flutter_svg |
 | Icons | flutter_launcher_icons |
 | Native splash | flutter_native_splash |
@@ -177,7 +178,7 @@ Manual entry works perfectly as a fallback.
 
 ## License
 
-This project is private. All rights reserved.
+Apache 2.0
 
 ## Built by
 

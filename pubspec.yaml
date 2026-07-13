@@ -1,5 +1,5 @@
 name: local_dart_scorer
-description: "A new Flutter project."
+description: "Snap a photo of your dartboard and get instant scores. Manual entry, multiplayer, dark theme — no ads, no accounts."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

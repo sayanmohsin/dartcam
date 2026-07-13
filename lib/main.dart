@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui show PlatformDispatcher;
 import 'package:path_provider/path_provider.dart';
 import 'presentation/screens/00_splash_screen.dart';
 import 'presentation/screens/01_turn_screen.dart';
@@ -23,6 +24,13 @@ const kInputBg = Color(0xFF2A2A2A);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (details) {
+    debugPrint('Unhandled Flutter error: ${details.exception}');
+  };
+  ui.PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Unhandled platform error: $error');
+    return true;
+  };
   runApp(const DartScorerApp());
 }
 
