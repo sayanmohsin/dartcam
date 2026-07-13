@@ -245,13 +245,9 @@ class _TurnScreenState extends State<TurnScreen> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: SizedBox(
-                width: boardSize,
-                height: boardSize,
-                child: DartboardPicker(
-                  onScore: _handleScore,
-                  fixedSize: boardSize,
-                ),
+              child: DartboardPicker(
+                onScore: _handleScore,
+                fixedSize: boardSize,
               ),
             ),
             if (allFilled)
