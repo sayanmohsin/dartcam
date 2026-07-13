@@ -843,17 +843,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
                   ),
                 ),
               ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-              child: Text(
-                _currentDart < 3
-                    ? 'Tap the board to score Dart ${_currentDart + 1}'
-                    : 'Set all 3 darts to continue',
-                style: const TextStyle(color: Colors.white38, fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
             ),
         ],
       ),

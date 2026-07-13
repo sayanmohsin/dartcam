@@ -101,13 +101,6 @@ class _DartboardPickerState extends State<DartboardPicker>
     }
   }
 
-  void _clearSelection() {
-    setState(() {
-      _preview = null;
-      _hasSelection = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -115,15 +108,6 @@ class _DartboardPickerState extends State<DartboardPicker>
       child: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 12),
-            Text(
-              _hasSelection ? 'Review or tap a different section' : 'Tap the board to score',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
             const SizedBox(height: 8),
             Expanded(
               child: Center(
@@ -136,17 +120,28 @@ class _DartboardPickerState extends State<DartboardPicker>
                       child: SizedBox(
                         width: size,
                         height: size,
-                        child: AnimatedBuilder(
-                          animation: _glowAnimation,
-                          builder: (context, child) {
-                            return CustomPaint(
-                              painter: _DartboardPainter(
-                                preview: _preview,
-                                hasSelection: _hasSelection,
-                                glowProgress: _glowAnimation.value,
+                        child: Stack(
+                          children: [
+                            AnimatedBuilder(
+                              animation: _glowAnimation,
+                              builder: (context, child) {
+                                return CustomPaint(
+                                  painter: _DartboardPainter(
+                                    preview: _preview,
+                                    hasSelection: _hasSelection,
+                                    glowProgress: _glowAnimation.value,
+                                  ),
+                                );
+                              },
+                            ),
+                            if (_hasSelection && _preview != null)
+                              Positioned(
+                                top: size * 0.08,
+                                left: size * 0.25,
+                                right: size * 0.25,
+                                child: _buildPopover(size),
                               ),
-                            );
-                          },
+                          ],
                         ),
                       ),
                     );
@@ -154,7 +149,6 @@ class _DartboardPickerState extends State<DartboardPicker>
                 ),
               ),
             ),
-            if (_hasSelection && _preview != null) _buildConfirmBar(),
             Padding(
               padding: const EdgeInsets.only(bottom: 24),
               child: TextButton(
@@ -176,90 +170,61 @@ class _DartboardPickerState extends State<DartboardPicker>
     );
   }
 
-  Widget _buildConfirmBar() {
+  Widget _buildPopover(double boardSize) {
     final label = _preview!.label;
     final totalScore = _preview!.score * _preview!.multiplier;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFFFF6D00).withOpacity(0.5),
-                width: 2,
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: const Color(0xFFFF6D00).withOpacity(0.6),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.gps_fixed,
-                    color: Color(0xFFFF6D00), size: 20),
-                const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF6D00),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '$totalScore',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(width: 8),
+            Text(
+              '$totalScore',
+              style: const TextStyle(
+                color: Color(0xFFFF6D00),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _clearSelection,
-                  icon: const Icon(Icons.refresh, size: 20),
-                  label: const Text('Change'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white70,
-                    side: const BorderSide(color: Colors.grey),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: _confirm,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6D00),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton.icon(
-                  onPressed: _confirm,
-                  icon: const Icon(Icons.check_circle, size: 22),
-                  label: Text('Confirm $label'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6D00),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
