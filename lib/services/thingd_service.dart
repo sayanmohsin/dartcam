@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../data/models/detection_log.dart';
 import '../data/models/turn_mutation.dart';
 import '../src/rust/api/bridge.dart';
 import '../src/rust/frb_generated.dart';
@@ -116,6 +117,23 @@ class ThingdService {
     _lastSequences.remove(matchId);
   }
 
+  Future<void> completeMatch(
+    String matchId, {
+    required String winnerPlayerId,
+    required int totalTurns,
+  }) async {
+    final config = await getMatchConfig(matchId);
+    if (config == null) return;
+    config['completedAt'] = DateTime.now().toIso8601String();
+    config['winnerPlayerId'] = winnerPlayerId;
+    config['totalTurns'] = totalTurns;
+    await _bridge.putObject(
+      collection: 'matches',
+      id: matchId,
+      body: jsonEncode(config),
+    );
+  }
+
   // ── Active match pointer (ObjectStore) ──────────────────────────────
 
   Future<String?> getActiveMatchId() async {
@@ -139,6 +157,20 @@ class ThingdService {
         body: body,
       );
     }
+  }
+
+  // ── Detection logs (EventLog) ────────────────────────────────────────
+
+  Future<void> appendDetectionLog(
+    String matchId,
+    DetectionLog log,
+  ) async {
+    final body = jsonEncode(log.toJson());
+    await _bridge.appendEvent(
+      stream: '${matchId}_detect',
+      eventType: 'detection.result',
+      body: body,
+    );
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────

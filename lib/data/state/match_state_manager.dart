@@ -126,7 +126,11 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
   }
 
   /// Records a turn. Returns a BustResult if the turn was a bust.
-  Future<BustResult> recordTurn(List<int> scores, {List<ScoredDart>? darts}) async {
+  Future<BustResult> recordTurn(
+    List<int> scores, {
+    List<ScoredDart>? darts,
+    bool isAutoDetected = false,
+  }) async {
     if (value.isCompleted) return BustResult.none;
 
     final player = value.activePlayer;
@@ -169,6 +173,11 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
       detectedScores: List.unmodifiable(scores),
       totalTurnScore: totalScore,
       scoreBeforeTurn: scoreBefore,
+      dartLabels:
+          darts?.map((d) => d.label).toList(),
+      dartMultipliers:
+          darts?.map((d) => d.multiplier).toList(),
+      isAutoDetected: isAutoDetected,
     );
 
     final updatedPlayers = List<PlayerProfile>.from(value.players);
@@ -188,6 +197,14 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
 
     // Persist event to thingd
     await _thingd.appendTurn(matchId, mutation);
+
+    if (isComplete) {
+      await _thingd.completeMatch(
+        matchId,
+        winnerPlayerId: player.id,
+        totalTurns: value.history.length + 1,
+      );
+    }
 
     if (!isComplete) {
       advanceTurn();

@@ -1,7 +1,7 @@
 import 'dart:math';
-import 'dart:typed_data';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
@@ -26,12 +26,14 @@ class MLResult {
     required this.calibrationPoints,
     this.rawBoxCount = 0,
     this.nmsBoxCount = 0,
+    this.classDistribution = const {},
   });
 
   final List<Offset> dartTips;
   final List<Offset> calibrationPoints;
   final int rawBoxCount;
   final int nmsBoxCount;
+  final Map<int, int> classDistribution;
 
   bool get hasAllCalibrationPoints => calibrationPoints.length == 4;
   bool get hasDartTips => dartTips.isNotEmpty;
@@ -54,7 +56,9 @@ MLResult? _processDetection(Uint8List imageBytes, IsolateInterpreter interpreter
   try {
     final image = img.decodeImage(imageBytes);
     if (image == null) {
-      print('MLEngine: failed to decode image (${imageBytes.length} bytes)');
+      if (kDebugMode) {
+        print('MLEngine: failed to decode image (${imageBytes.length} bytes)');
+      }
       return null;
     }
 
@@ -90,42 +94,50 @@ MLResult? _processDetection(Uint8List imageBytes, IsolateInterpreter interpreter
     final boxes2 = decodeOutput(output2, 32, _anchorsStride32);
     final allBoxes = <YoloBox>[...boxes1, ...boxes2];
 
-    print('MLEngine: decodeOutput stride16=${boxes1.length} stride32=${boxes2.length} total=${allBoxes.length}');
-    if (allBoxes.isNotEmpty) {
-      final classCounts = <int, int>{};
-      for (final b in allBoxes) {
-        classCounts[b.classId] = (classCounts[b.classId] ?? 0) + 1;
-      }
-      print('MLEngine: class distribution: $classCounts');
-      for (final b in allBoxes) {
-        print('MLEngine: box class=${b.classId} score=${b.score.toStringAsFixed(3)} '
-            'pos=(${b.x.toStringAsFixed(3)}, ${b.y.toStringAsFixed(3)}) '
-            'size=(${b.w.toStringAsFixed(3)}, ${b.h.toStringAsFixed(3)})');
+    if (kDebugMode) {
+      print('MLEngine: decodeOutput stride16=${boxes1.length} stride32=${boxes2.length} total=${allBoxes.length}');
+      if (allBoxes.isNotEmpty) {
+        final classCounts = <int, int>{};
+        for (final b in allBoxes) {
+          classCounts[b.classId] = (classCounts[b.classId] ?? 0) + 1;
+        }
+        print('MLEngine: class distribution: $classCounts');
+        for (final b in allBoxes) {
+          print('MLEngine: box class=${b.classId} score=${b.score.toStringAsFixed(3)} '
+              'pos=(${b.x.toStringAsFixed(3)}, ${b.y.toStringAsFixed(3)}) '
+              'size=(${b.w.toStringAsFixed(3)}, ${b.h.toStringAsFixed(3)})');
+        }
       }
     }
 
     final nmsBoxes = nms(allBoxes, 0.45);
-    print('MLEngine: after NMS=${nmsBoxes.length}');
-    if (nmsBoxes.isNotEmpty) {
-      final classCounts = <int, int>{};
-      for (final b in nmsBoxes) {
-        classCounts[b.classId] = (classCounts[b.classId] ?? 0) + 1;
+    final nmsClassCounts = <int, int>{};
+    for (final b in nmsBoxes) {
+      nmsClassCounts[b.classId] = (nmsClassCounts[b.classId] ?? 0) + 1;
+    }
+
+    if (kDebugMode) {
+      print('MLEngine: after NMS=${nmsBoxes.length}');
+      if (nmsBoxes.isNotEmpty) {
+        print('MLEngine: NMS class distribution: $nmsClassCounts');
       }
-      print('MLEngine: NMS class distribution: $classCounts');
     }
 
     final result = extractKeypoints(nmsBoxes);
-    print('MLEngine: ${result.diagnosticSummary}');
+    if (kDebugMode) print('MLEngine: ${result.diagnosticSummary}');
 
     return MLResult(
       dartTips: result.dartTips,
       calibrationPoints: result.calibrationPoints,
       rawBoxCount: allBoxes.length,
       nmsBoxCount: nmsBoxes.length,
+      classDistribution: nmsClassCounts,
     );
   } catch (e, st) {
-    print('MLEngine._processDetection error: $e');
-    print(st);
+    if (kDebugMode) {
+      print('MLEngine._processDetection error: $e');
+      print(st);
+    }
     return null;
   }
 }

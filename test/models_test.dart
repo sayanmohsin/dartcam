@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:local_dart_scorer/data/models/player_profile.dart';
 import 'package:local_dart_scorer/data/models/turn_mutation.dart';
 import 'package:local_dart_scorer/data/models/match_state.dart';
+import 'package:local_dart_scorer/data/models/detection_log.dart';
 
 void main() {
   group('PlayerProfile', () {
@@ -80,6 +81,89 @@ void main() {
 
       expect(restored.detectedScores, isEmpty);
       expect(restored.totalTurnScore, 0);
+    });
+
+    test('round-trips dartLabels and dartMultipliers', () {
+      const original = TurnMutation(
+        playerId: 'player-1',
+        detectedScores: [60, 45, 20],
+        totalTurnScore: 125,
+        scoreBeforeTurn: 301,
+        dartLabels: ['T20', 'D15', 'D10'],
+        dartMultipliers: [3, 2, 2],
+        isAutoDetected: true,
+      );
+
+      final json = original.toJson();
+      final restored = TurnMutation.fromJson(json);
+
+      expect(restored.dartLabels, ['T20', 'D15', 'D10']);
+      expect(restored.dartMultipliers, [3, 2, 2]);
+      expect(restored.isAutoDetected, isTrue);
+    });
+
+    test('defaults isAutoDetected to false when missing from JSON', () {
+      final json = {
+        'playerId': 'player-1',
+        'detectedScores': [20],
+        'totalTurnScore': 20,
+        'scoreBeforeTurn': 301,
+      };
+
+      final restored = TurnMutation.fromJson(json);
+      expect(restored.isAutoDetected, isFalse);
+      expect(restored.dartLabels, isNull);
+    });
+  });
+
+  group('DetectionLog', () {
+    test('toJson/fromJson round-trip', () {
+      final original = DetectionLog(
+        timestamp: DateTime(2025, 6, 15, 14, 30, 0),
+        imagePath: '/tmp/shot.png',
+        imageSizeBytes: 2457600,
+        rawBoxCount: 2500,
+        nmsBoxCount: 2190,
+        classDistribution: {0: 2190},
+        dartTipCount: 3,
+        calibrationPointIds: [1, 2],
+        status: 'board_not_detected',
+        confidenceThreshold: 0.25,
+      );
+
+      final json = original.toJson();
+      final restored = DetectionLog.fromJson(json);
+
+      expect(restored.timestamp, original.timestamp);
+      expect(restored.imagePath, '/tmp/shot.png');
+      expect(restored.imageSizeBytes, 2457600);
+      expect(restored.rawBoxCount, 2500);
+      expect(restored.nmsBoxCount, 2190);
+      expect(restored.classDistribution, {0: 2190});
+      expect(restored.dartTipCount, 3);
+      expect(restored.calibrationPointIds, [1, 2]);
+      expect(restored.status, 'board_not_detected');
+      expect(restored.confidenceThreshold, 0.25);
+    });
+
+    test('handles null image fields', () {
+      final original = DetectionLog(
+        timestamp: DateTime(2025, 6, 15),
+        rawBoxCount: 0,
+        nmsBoxCount: 0,
+        classDistribution: {},
+        dartTipCount: 0,
+        calibrationPointIds: [],
+        status: 'detection_failed',
+        confidenceThreshold: 0.25,
+      );
+
+      final json = original.toJson();
+      final restored = DetectionLog.fromJson(json);
+
+      expect(restored.imagePath, isNull);
+      expect(restored.imageSizeBytes, isNull);
+      expect(restored.calibrationPointIds, isEmpty);
     });
   });
 

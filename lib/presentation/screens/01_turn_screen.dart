@@ -67,6 +67,7 @@ class _TurnScreenState extends State<TurnScreen> {
     final bustResult = await widget.stateManager.recordTurn(
       scores,
       darts: _darts.whereType<ScoredDart>().toList(),
+      isAutoDetected: false,
     );
 
     if (bustResult != BustResult.none && mounted) {

@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../widgets/score_badge.dart' hide kNeonOrange, kNeonOrangeGlow;
 import '../widgets/manual_picker_grid.dart' hide kNeonOrange, kNeonOrangeGlow;
 import '../widgets/dartboard_picker.dart';
+import '../../core/constants/dartboard_constants.dart';
 import '../../core/vision/ml_engine.dart';
 import '../../core/vision/dartboard_scorer.dart';
+import '../../data/models/detection_log.dart';
 import '../../data/state/match_state_manager.dart';
 import '../../main.dart';
 
@@ -47,7 +49,6 @@ class _DetectionScreenState extends State<DetectionScreen>
   bool _isConfirmed = false;
   bool _noDartsDetected = false;
   bool _boardNotDetected = false;
-  MLResult? _lastResult;
 
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
@@ -122,44 +123,76 @@ class _DetectionScreenState extends State<DetectionScreen>
       final result = await MLEngine.detect(shotBytes);
       await _waitForMinDuration(analyzeStart, 500);
 
+      String status;
+      int dartTipCount = 0;
+      List<int> calPointIds = [];
+      int rawBoxCount = 0;
+      int nmsBoxCount = 0;
+      Map<int, int> classDist = {};
+      List<ScoredDart>? scoredDarts;
+
       if (result == null) {
-        setState(() {
-          _error = 'Detection failed';
-          _isProcessing = false;
-        });
-        return;
+        status = 'detection_failed';
+      } else {
+        rawBoxCount = result.rawBoxCount;
+        nmsBoxCount = result.nmsBoxCount;
+        dartTipCount = result.dartTips.length;
+        calPointIds = result.calibrationPoints
+            .asMap()
+            .entries
+            .map((e) => e.key + 1)
+            .toList();
+        classDist = result.classDistribution;
+
+        if (!result.hasAllCalibrationPoints) {
+          status = 'board_not_detected';
+        } else if (!result.hasDartTips) {
+          status = 'no_darts';
+        } else {
+          status = 'success';
+          _setStep(2);
+          final scoreStart = DateTime.now();
+
+          scoredDarts = DartboardScorer.scoreDarts(
+            dartTips: result.dartTips,
+            calibrationPoints: result.calibrationPoints,
+          );
+
+          await _waitForMinDuration(scoreStart, 400);
+        }
       }
 
-      if (!result.hasAllCalibrationPoints) {
-        setState(() {
-          _lastResult = result;
-          _boardNotDetected = true;
-          _isProcessing = false;
-        });
-        return;
+      // Log detection result to thingd
+      try {
+        final log = DetectionLog(
+          timestamp: DateTime.now(),
+          imagePath: widget.shotPath,
+          imageSizeBytes: shotBytes.length,
+          rawBoxCount: rawBoxCount,
+          nmsBoxCount: nmsBoxCount,
+          classDistribution: classDist,
+          dartTipCount: dartTipCount,
+          calibrationPointIds: calPointIds,
+          status: status,
+          confidenceThreshold: DartboardConstants.detectionConfThreshold,
+        );
+        await widget.stateManager.thingd
+            .appendDetectionLog(widget.stateManager.matchId, log);
+      } catch (e) {
+        if (kDebugMode) print('Failed to log detection result: $e');
       }
-
-      if (!result.hasDartTips) {
-        setState(() {
-          _noDartsDetected = true;
-          _isProcessing = false;
-        });
-        return;
-      }
-
-      _setStep(2);
-      final scoreStart = DateTime.now();
-
-      final scoredDarts = DartboardScorer.scoreDarts(
-        dartTips: result.dartTips,
-        calibrationPoints: result.calibrationPoints,
-      );
-
-      await _waitForMinDuration(scoreStart, 400);
 
       if (mounted) {
         setState(() {
-          _scoredDarts = scoredDarts;
+          if (scoredDarts != null) {
+            _scoredDarts = scoredDarts;
+          } else if (status == 'board_not_detected') {
+            _boardNotDetected = true;
+          } else if (status == 'no_darts') {
+            _noDartsDetected = true;
+          } else if (status == 'detection_failed') {
+            _error = 'Detection failed';
+          }
           _isProcessing = false;
         });
       }
@@ -208,6 +241,7 @@ class _DetectionScreenState extends State<DetectionScreen>
     final bustResult = await widget.stateManager.recordTurn(
       scores.sublist(0, 3),
       darts: _scoredDarts,
+      isAutoDetected: true,
     );
 
     if (bustResult != BustResult.none && mounted) {
@@ -513,11 +547,6 @@ class _DetectionScreenState extends State<DetectionScreen>
   }
 
   Widget _buildBoardNotDetectedView() {
-    final calCount = _lastResult?.calibrationPoints.length ?? 0;
-    final dartCount = _lastResult?.dartTips.length ?? 0;
-    final boxCount = _lastResult?.rawBoxCount ?? 0;
-    final nmsCount = _lastResult?.nmsBoxCount ?? 0;
-
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -530,10 +559,10 @@ class _DetectionScreenState extends State<DetectionScreen>
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.crop_free, color: Colors.white54, size: 48),
-                const SizedBox(height: 16),
-                const Text(
+              children: const [
+                Icon(Icons.crop_free, color: Colors.white54, size: 48),
+                SizedBox(height: 16),
+                Text(
                   'Board not fully visible',
                   style: TextStyle(
                     color: Colors.white,
@@ -541,18 +570,11 @@ class _DetectionScreenState extends State<DetectionScreen>
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
-                  'Calibration points: $calCount/4\n'
-                  'Dart tips: $dartCount\n'
-                  'Raw detections: $boxCount → $nmsCount after NMS',
+                  'Make sure the entire dartboard\nis visible in the frame',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 13,
-                    fontFamily: 'monospace',
-                    height: 1.5,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 14),
                 ),
               ],
             ),
