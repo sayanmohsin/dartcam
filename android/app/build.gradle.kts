@@ -34,7 +34,7 @@ android {
 
     defaultConfig {
         applicationId = "com.thingdcloud.dartcam"
-        minSdk = flutter.minSdkVersion
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -54,6 +54,12 @@ android {
     buildTypes {
         getByName("release") {
             signingConfig = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
