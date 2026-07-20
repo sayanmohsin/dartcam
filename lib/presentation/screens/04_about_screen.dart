@@ -13,10 +13,10 @@ class AboutScreen extends StatefulWidget {
 class _AboutScreenState extends State<AboutScreen> {
   bool _isLaunching = false;
 
-  Future<void> _openGithub() async {
+  Future<void> _openUrl(String url) async {
     if (_isLaunching) return;
     _isLaunching = true;
-    final uri = Uri.parse('https://github.com/sayanmohsin');
+    final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -69,7 +69,7 @@ class _AboutScreenState extends State<AboutScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'v0.1.0 Beta',
+                  'v0.2.0 Beta',
                   style: TextStyle(
                     color: Colors.white24,
                     fontSize: 12,
@@ -115,28 +115,31 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                GestureDetector(
-                  onTap: _openGithub,
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: kCardBg,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _iconButton(
+                      'assets/github.svg',
+                      'https://github.com/sayanmohsin',
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: SvgPicture.asset(
-                        'assets/github.svg',
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white70,
-                          BlendMode.srcIn,
-                        ),
-                      ),
+                    const SizedBox(width: 16),
+                    _iconButton(
+                      null,
+                      'https://sayanmohsin.com',
+                      icon: Icons.language,
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    _iconButton(
+                      null,
+                      'https://thingd.cloud',
+                      icon: Icons.cloud_outlined,
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 24),
+                _buildLink('sayanmohsin.com', 'https://sayanmohsin.com'),
+                const SizedBox(height: 8),
+                _buildLink('thingd.cloud', 'https://thingd.cloud'),
                 const SizedBox(height: 48),
                 Text(
                   'DARTCAM',
@@ -150,6 +153,47 @@ class _AboutScreenState extends State<AboutScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _iconButton(String? asset, String url, {IconData? icon}) {
+    return GestureDetector(
+      onTap: () => _openUrl(url),
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: kCardBg,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white12),
+        ),
+        child: asset != null
+            ? Padding(
+                padding: const EdgeInsets.all(10),
+                child: SvgPicture.asset(
+                  asset,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white70,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              )
+            : Icon(icon, color: Colors.white70, size: 24),
+      ),
+    );
+  }
+
+  Widget _buildLink(String label, String url) {
+    return GestureDetector(
+      onTap: () => _openUrl(url),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: kNeonOrange,
+          fontSize: 14,
+          decoration: TextDecoration.underline,
         ),
       ),
     );
