@@ -5,7 +5,7 @@
 
 set -e
 
-TAG="v0.1.0-beta"
+TAG="v0.2.0-beta"
 APK_NAME="DartCam-${TAG}.apk"
 BUILD_DIR="build/app/outputs/flutter-apk"
 
