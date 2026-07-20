@@ -57,7 +57,6 @@ class _DartboardPickerState extends State<DartboardPicker>
     final mmPerPx = DartboardConstants.boardRadius / boardRadius;
     final distanceMm = distance * mmPerPx;
 
-    // Enlarged miss boundary
     if (distanceMm > DartboardConstants.doubleOuterRadius * _ringFactor) {
       if (_hasSelection) {
         setState(() {
@@ -150,18 +149,19 @@ class _DartboardPickerState extends State<DartboardPicker>
                       child: SizedBox(
                         width: size,
                         height: size,
-                        child: _buildBoard(size),
+                        child: Stack(
+                          children: [
+                            _buildBoard(size),
+                            if (_hasSelection && _preview != null)
+                              _buildPopover(size),
+                          ],
+                        ),
                       ),
                     );
                   },
                 ),
               ),
             ),
-            if (_hasSelection && _preview != null)
-              _buildConfirmationBar()
-            else
-              _buildMissButton(),
-            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -184,103 +184,88 @@ class _DartboardPickerState extends State<DartboardPicker>
     );
   }
 
-  Widget _buildConfirmationBar() {
+  Widget _buildPopover(double boardSize) {
+    final isBull = _preview!.label == 'BULL' || _preview!.label == '25';
     final label = _preview!.label;
     final totalScore = _preview!.score * _preview!.multiplier;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFFF6D00).withOpacity(0.5),
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
+
+    return Positioned(
+      top: isBull ? null : boardSize * 0.08,
+      bottom: isBull ? boardSize * 0.08 : null,
+      left: boardSize * 0.25,
+      right: boardSize * 0.25,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: const Color(0xFFFF6D00).withOpacity(0.6),
+              width: 1.5,
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            '= $totalScore',
-            style: const TextStyle(
-              color: Color(0xFFFF6D00),
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: _confirm,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF6D00),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'ADD',
-                style: TextStyle(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$totalScore',
+                style: const TextStyle(
+                  color: Color(0xFFFF6D00),
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _preview = null;
-                _hasSelection = false;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF424242),
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: _confirm,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF6D00),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
               ),
-              child: const Icon(Icons.close, color: Colors.white70, size: 20),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMissButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: SizedBox(
-        width: double.infinity,
-        child: TextButton(
-          onPressed: () => widget.onScore(null),
-          style: TextButton.styleFrom(
-            backgroundColor: const Color(0xFF2A2A2A),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          child: const Text(
-            'MISS',
-            style: TextStyle(
-              color: Colors.white38,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2,
-            ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _preview = null;
+                    _hasSelection = false;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF424242),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
