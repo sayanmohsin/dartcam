@@ -284,4 +284,75 @@ void main() {
       expect(restored.gameType, 301);
     });
   });
+
+  group('PlayerProfile lifetime stats', () {
+    test('defaults lifetime stats to 0', () {
+      final profile = PlayerProfile(
+        id: 'p1',
+        name: 'Alice',
+        currentScore: 501,
+      );
+      expect(profile.totalMatches, 0);
+      expect(profile.totalWins, 0);
+      expect(profile.totalDartsThrown, 0);
+      expect(profile.oneEightyCount, 0);
+      expect(profile.centuryCount, 0);
+      expect(profile.highestCheckout, 0);
+    });
+
+    test('toJson/fromJson round-trip includes lifetime stats', () {
+      final original = PlayerProfile(
+        id: 'p1',
+        name: 'Alice',
+        currentScore: 501,
+        totalMatches: 10,
+        totalWins: 7,
+        totalDartsThrown: 145,
+        oneEightyCount: 3,
+        centuryCount: 8,
+        highestCheckout: 170,
+      );
+      final json = original.toJson();
+      final restored = PlayerProfile.fromJson(json);
+
+      expect(restored.totalMatches, 10);
+      expect(restored.totalWins, 7);
+      expect(restored.totalDartsThrown, 145);
+      expect(restored.oneEightyCount, 3);
+      expect(restored.centuryCount, 8);
+      expect(restored.highestCheckout, 170);
+    });
+
+    test('copyWith preserves lifetime stats', () {
+      final original = PlayerProfile(
+        id: 'p1',
+        name: 'Alice',
+        currentScore: 501,
+        totalMatches: 10,
+        totalWins: 7,
+        totalDartsThrown: 145,
+        oneEightyCount: 3,
+      );
+      final updated = original.copyWith(currentScore: 301);
+      expect(updated.totalMatches, 10);
+      expect(updated.totalWins, 7);
+      expect(updated.totalDartsThrown, 145);
+      expect(updated.oneEightyCount, 3);
+    });
+
+    test('fromJson handles missing lifetime stats (old format)', () {
+      final json = {
+        'id': 'p1',
+        'name': 'Alice',
+        'currentScore': 501,
+      };
+      final profile = PlayerProfile.fromJson(json);
+      expect(profile.totalMatches, 0);
+      expect(profile.totalWins, 0);
+      expect(profile.totalDartsThrown, 0);
+      expect(profile.oneEightyCount, 0);
+      expect(profile.centuryCount, 0);
+      expect(profile.highestCheckout, 0);
+    });
+  });
 }

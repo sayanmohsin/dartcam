@@ -64,7 +64,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -1556606143;
+  int get rustContentHash => -426685290;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -76,6 +76,18 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<bool> crateApiBridgeThingdBridgeAckJob({
+    required ThingdBridge that,
+    required String queue,
+    required String jobId,
+  });
+
+  Future<String> crateApiBridgeThingdBridgeAggregate({
+    required ThingdBridge that,
+    required String collection,
+    required String params,
+  });
+
   Future<String> crateApiBridgeThingdBridgeAppendEvent({
     required ThingdBridge that,
     required String stream,
@@ -89,9 +101,31 @@ abstract class RustLibApi extends BaseApi {
     required List<(String, String)> events,
   });
 
+  Future<String> crateApiBridgeThingdBridgeClaimJob({
+    required ThingdBridge that,
+    required String queue,
+    required BigInt leaseMs,
+  });
+
+  Future<BigInt> crateApiBridgeThingdBridgeCountLinks({
+    required ThingdBridge that,
+  });
+
+  Future<String> crateApiBridgeThingdBridgeCreateLink({
+    required ThingdBridge that,
+    required String fromRef,
+    required String linkType,
+    required String toRef,
+  });
+
   Future<String?> crateApiBridgeThingdBridgeDeleteLastEvent({
     required ThingdBridge that,
     required String stream,
+  });
+
+  Future<bool> crateApiBridgeThingdBridgeDeleteLink({
+    required ThingdBridge that,
+    required String id,
   });
 
   Future<bool> crateApiBridgeThingdBridgeDeleteObject({
@@ -110,10 +144,22 @@ abstract class RustLibApi extends BaseApi {
     required String stream,
   });
 
+  Future<List<String>> crateApiBridgeThingdBridgeGetNeighbors({
+    required ThingdBridge that,
+    required String reference,
+    required String direction,
+    String? linkType,
+  });
+
   Future<String?> crateApiBridgeThingdBridgeGetObject({
     required ThingdBridge that,
     required String collection,
     required String id,
+  });
+
+  Future<List<String>> crateApiBridgeThingdBridgeListDeadJobs({
+    required ThingdBridge that,
+    required String queue,
   });
 
   Future<List<String>> crateApiBridgeThingdBridgeListEvents({
@@ -128,10 +174,38 @@ abstract class RustLibApi extends BaseApi {
     required BigInt limit,
   });
 
+  Future<List<String>> crateApiBridgeThingdBridgeListJobs({
+    required ThingdBridge that,
+    required String queue,
+  });
+
+  Future<List<(String, String)>> crateApiBridgeThingdBridgeListObjects({
+    required ThingdBridge that,
+    required String collection,
+    required BigInt limit,
+    required BigInt offset,
+  });
+
+  Future<bool> crateApiBridgeThingdBridgeNackJob({
+    required ThingdBridge that,
+    required String queue,
+    required String jobId,
+    required BigInt delayMs,
+    required String error,
+  });
+
   Future<ThingdBridge> crateApiBridgeThingdBridgeOpen({required String path});
 
   Future<void> crateApiBridgeThingdBridgeOptimizeSearchIndex({
     required ThingdBridge that,
+  });
+
+  Future<String> crateApiBridgeThingdBridgePushJob({
+    required ThingdBridge that,
+    required String queue,
+    required String jobId,
+    required String body,
+    required int maxAttempts,
   });
 
   Future<String> crateApiBridgeThingdBridgePutObject({
@@ -144,6 +218,19 @@ abstract class RustLibApi extends BaseApi {
   Future<List<String>> crateApiBridgeThingdBridgePutObjectsBatch({
     required ThingdBridge that,
     required List<(String, String, String)> objects,
+  });
+
+  Future<List<String>> crateApiBridgeThingdBridgeSearch({
+    required ThingdBridge that,
+    required String query,
+    required String collection,
+    required BigInt limit,
+  });
+
+  Future<String> crateApiBridgeThingdBridgeTimeseries({
+    required ThingdBridge that,
+    required String collection,
+    required String params,
   });
 
   Future<(int, int)> crateApiBridgeThingdBridgeWalCheckpoint({
@@ -168,6 +255,86 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<bool> crateApiBridgeThingdBridgeAckJob({
+    required ThingdBridge that,
+    required String queue,
+    required String jobId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(queue, serializer);
+          sse_encode_String(jobId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeAckJobConstMeta,
+        argValues: [that, queue, jobId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeAckJobConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_ack_job",
+        argNames: ["that", "queue", "jobId"],
+      );
+
+  @override
+  Future<String> crateApiBridgeThingdBridgeAggregate({
+    required ThingdBridge that,
+    required String collection,
+    required String params,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(collection, serializer);
+          sse_encode_String(params, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeAggregateConstMeta,
+        argValues: [that, collection, params],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeAggregateConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_aggregate",
+        argNames: ["that", "collection", "params"],
+      );
+
+  @override
   Future<String> crateApiBridgeThingdBridgeAppendEvent({
     required ThingdBridge that,
     required String stream,
@@ -188,7 +355,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 3,
             port: port_,
           );
         },
@@ -228,7 +395,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 4,
             port: port_,
           );
         },
@@ -250,6 +417,124 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<String> crateApiBridgeThingdBridgeClaimJob({
+    required ThingdBridge that,
+    required String queue,
+    required BigInt leaseMs,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(queue, serializer);
+          sse_encode_u_64(leaseMs, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeClaimJobConstMeta,
+        argValues: [that, queue, leaseMs],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeClaimJobConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_claim_job",
+        argNames: ["that", "queue", "leaseMs"],
+      );
+
+  @override
+  Future<BigInt> crateApiBridgeThingdBridgeCountLinks({
+    required ThingdBridge that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeCountLinksConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeCountLinksConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_count_links",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<String> crateApiBridgeThingdBridgeCreateLink({
+    required ThingdBridge that,
+    required String fromRef,
+    required String linkType,
+    required String toRef,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(fromRef, serializer);
+          sse_encode_String(linkType, serializer);
+          sse_encode_String(toRef, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeCreateLinkConstMeta,
+        argValues: [that, fromRef, linkType, toRef],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeCreateLinkConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_create_link",
+        argNames: ["that", "fromRef", "linkType", "toRef"],
+      );
+
+  @override
   Future<String?> crateApiBridgeThingdBridgeDeleteLastEvent({
     required ThingdBridge that,
     required String stream,
@@ -266,7 +551,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 8,
             port: port_,
           );
         },
@@ -288,6 +573,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<bool> crateApiBridgeThingdBridgeDeleteLink({
+    required ThingdBridge that,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeDeleteLinkConstMeta,
+        argValues: [that, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeDeleteLinkConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_delete_link",
+        argNames: ["that", "id"],
+      );
+
+  @override
   Future<bool> crateApiBridgeThingdBridgeDeleteObject({
     required ThingdBridge that,
     required String collection,
@@ -306,7 +629,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 10,
             port: port_,
           );
         },
@@ -344,7 +667,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 11,
             port: port_,
           );
         },
@@ -382,7 +705,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 12,
             port: port_,
           );
         },
@@ -404,6 +727,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<String>> crateApiBridgeThingdBridgeGetNeighbors({
+    required ThingdBridge that,
+    required String reference,
+    required String direction,
+    String? linkType,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(reference, serializer);
+          sse_encode_String(direction, serializer);
+          sse_encode_opt_String(linkType, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeGetNeighborsConstMeta,
+        argValues: [that, reference, direction, linkType],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeGetNeighborsConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_get_neighbors",
+        argNames: ["that", "reference", "direction", "linkType"],
+      );
+
+  @override
   Future<String?> crateApiBridgeThingdBridgeGetObject({
     required ThingdBridge that,
     required String collection,
@@ -422,7 +787,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 14,
             port: port_,
           );
         },
@@ -444,6 +809,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<String>> crateApiBridgeThingdBridgeListDeadJobs({
+    required ThingdBridge that,
+    required String queue,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(queue, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeListDeadJobsConstMeta,
+        argValues: [that, queue],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeListDeadJobsConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_list_dead_jobs",
+        argNames: ["that", "queue"],
+      );
+
+  @override
   Future<List<String>> crateApiBridgeThingdBridgeListEvents({
     required ThingdBridge that,
     required String stream,
@@ -460,7 +863,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 16,
             port: port_,
           );
         },
@@ -502,7 +905,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 17,
             port: port_,
           );
         },
@@ -524,6 +927,130 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<String>> crateApiBridgeThingdBridgeListJobs({
+    required ThingdBridge that,
+    required String queue,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(queue, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeListJobsConstMeta,
+        argValues: [that, queue],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeListJobsConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_list_jobs",
+        argNames: ["that", "queue"],
+      );
+
+  @override
+  Future<List<(String, String)>> crateApiBridgeThingdBridgeListObjects({
+    required ThingdBridge that,
+    required String collection,
+    required BigInt limit,
+    required BigInt offset,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(collection, serializer);
+          sse_encode_u_64(limit, serializer);
+          sse_encode_u_64(offset, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_record_string_string,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeListObjectsConstMeta,
+        argValues: [that, collection, limit, offset],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeListObjectsConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_list_objects",
+        argNames: ["that", "collection", "limit", "offset"],
+      );
+
+  @override
+  Future<bool> crateApiBridgeThingdBridgeNackJob({
+    required ThingdBridge that,
+    required String queue,
+    required String jobId,
+    required BigInt delayMs,
+    required String error,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(queue, serializer);
+          sse_encode_String(jobId, serializer);
+          sse_encode_u_64(delayMs, serializer);
+          sse_encode_String(error, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeNackJobConstMeta,
+        argValues: [that, queue, jobId, delayMs, error],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeNackJobConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_nack_job",
+        argNames: ["that", "queue", "jobId", "delayMs", "error"],
+      );
+
+  @override
   Future<ThingdBridge> crateApiBridgeThingdBridgeOpen({required String path}) {
     return handler.executeNormal(
       NormalTask(
@@ -533,7 +1060,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 21,
             port: port_,
           );
         },
@@ -567,7 +1094,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 22,
             port: port_,
           );
         },
@@ -586,6 +1113,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "ThingdBridge_optimize_search_index",
         argNames: ["that"],
+      );
+
+  @override
+  Future<String> crateApiBridgeThingdBridgePushJob({
+    required ThingdBridge that,
+    required String queue,
+    required String jobId,
+    required String body,
+    required int maxAttempts,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(queue, serializer);
+          sse_encode_String(jobId, serializer);
+          sse_encode_String(body, serializer);
+          sse_encode_u_32(maxAttempts, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgePushJobConstMeta,
+        argValues: [that, queue, jobId, body, maxAttempts],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgePushJobConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_push_job",
+        argNames: ["that", "queue", "jobId", "body", "maxAttempts"],
       );
 
   @override
@@ -609,7 +1180,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 24,
             port: port_,
           );
         },
@@ -647,7 +1218,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 25,
             port: port_,
           );
         },
@@ -669,6 +1240,88 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<String>> crateApiBridgeThingdBridgeSearch({
+    required ThingdBridge that,
+    required String query,
+    required String collection,
+    required BigInt limit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(query, serializer);
+          sse_encode_String(collection, serializer);
+          sse_encode_u_64(limit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 26,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeSearchConstMeta,
+        argValues: [that, query, collection, limit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeSearchConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_search",
+        argNames: ["that", "query", "collection", "limit"],
+      );
+
+  @override
+  Future<String> crateApiBridgeThingdBridgeTimeseries({
+    required ThingdBridge that,
+    required String collection,
+    required String params,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerThingdBridge(
+            that,
+            serializer,
+          );
+          sse_encode_String(collection, serializer);
+          sse_encode_String(params, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 27,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBridgeThingdBridgeTimeseriesConstMeta,
+        argValues: [that, collection, params],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeThingdBridgeTimeseriesConstMeta =>
+      const TaskConstMeta(
+        debugName: "ThingdBridge_timeseries",
+        argNames: ["that", "collection", "params"],
+      );
+
+  @override
   Future<(int, int)> crateApiBridgeThingdBridgeWalCheckpoint({
     required ThingdBridge that,
   }) {
@@ -683,7 +1336,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 28,
             port: port_,
           );
         },
@@ -839,6 +1492,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       throw Exception('Expected 2 elements, got ${arr.length}');
     }
     return (dco_decode_String(arr[0]), dco_decode_u_64(arr[1]));
+  }
+
+  @protected
+  int dco_decode_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -1030,6 +1689,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int sse_decode_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint32();
+  }
+
+  @protected
   BigInt sse_decode_u_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getBigUint64();
@@ -1213,6 +1878,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint32(self);
+  }
+
+  @protected
   void sse_encode_u_64(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
@@ -1255,6 +1926,27 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
         RustLib.instance.api.rust_arc_decrement_strong_count_ThingdBridgePtr,
   );
 
+  /// Acknowledge a leased job as completed. Returns true if acked.
+  Future<bool> ackJob({required String queue, required String jobId}) => RustLib
+      .instance
+      .api
+      .crateApiBridgeThingdBridgeAckJob(that: this, queue: queue, jobId: jobId);
+
+  /// Run an aggregation over a collection.
+  ///
+  /// `params` is a JSON string:
+  ///   { "function": "count|sum|avg|min|max",
+  ///     "field": "...", "groupBy": "..." }
+  /// Returns JSON result with total and groups.
+  Future<String> aggregate({
+    required String collection,
+    required String params,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgeAggregate(
+    that: this,
+    collection: collection,
+    params: params,
+  );
+
   /// Append an event to a stream. Returns the stored event body.
   Future<String> appendEvent({
     required String stream,
@@ -1277,12 +1969,42 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
     events: events,
   );
 
+  /// Claim the next ready job from a queue. Returns JSON or empty string.
+  ///
+  /// Returns JSON with id, queue, body, status, attempts.
+  /// Returns empty string if no job available.
+  Future<String> claimJob({required String queue, required BigInt leaseMs}) =>
+      RustLib.instance.api.crateApiBridgeThingdBridgeClaimJob(
+        that: this,
+        queue: queue,
+        leaseMs: leaseMs,
+      );
+
+  /// Count total links.
+  Future<BigInt> countLinks() =>
+      RustLib.instance.api.crateApiBridgeThingdBridgeCountLinks(that: this);
+
+  /// Create a directed link between two references. Returns the link id.
+  Future<String> createLink({
+    required String fromRef,
+    required String linkType,
+    required String toRef,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgeCreateLink(
+    that: this,
+    fromRef: fromRef,
+    linkType: linkType,
+    toRef: toRef,
+  );
+
   /// Delete the most recent event from a stream.
-  /// Returns the deleted event body, or None if the stream was empty.
   Future<String?> deleteLastEvent({required String stream}) => RustLib
       .instance
       .api
       .crateApiBridgeThingdBridgeDeleteLastEvent(that: this, stream: stream);
+
+  /// Delete a link by id. Returns true if deleted.
+  Future<bool> deleteLink({required String id}) => RustLib.instance.api
+      .crateApiBridgeThingdBridgeDeleteLink(that: this, id: id);
 
   /// Delete an object by collection and id. Returns true if deleted.
   Future<bool> deleteObject({required String collection, required String id}) =>
@@ -1303,6 +2025,21 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
   Future<BigInt> deleteStream({required String stream}) => RustLib.instance.api
       .crateApiBridgeThingdBridgeDeleteStream(that: this, stream: stream);
 
+  /// Get neighbors of a reference. Returns JSON array of links.
+  ///
+  /// `direction`: "Outgoing", "Incoming", or "Both" (default).
+  /// `link_type`: optional filter.
+  Future<List<String>> getNeighbors({
+    required String reference,
+    required String direction,
+    String? linkType,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgeGetNeighbors(
+    that: this,
+    reference: reference,
+    direction: direction,
+    linkType: linkType,
+  );
+
   /// Read an object by collection and id. Returns None if not found.
   Future<String?> getObject({required String collection, required String id}) =>
       RustLib.instance.api.crateApiBridgeThingdBridgeGetObject(
@@ -1311,6 +2048,12 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
         id: id,
       );
 
+  /// List dead-letter jobs in a queue. Returns JSON array.
+  Future<List<String>> listDeadJobs({required String queue}) => RustLib
+      .instance
+      .api
+      .crateApiBridgeThingdBridgeListDeadJobs(that: this, queue: queue);
+
   /// List all events in a stream, in ascending sequence order.
   Future<List<String>> listEvents({required String stream}) => RustLib
       .instance
@@ -1318,9 +2061,6 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
       .crateApiBridgeThingdBridgeListEvents(that: this, stream: stream);
 
   /// List events from a given sequence number. Returns (body, sequence) pairs.
-  ///
-  /// Only returns events with sequence > `from_sequence`, up to `limit`.
-  /// Pass `from_sequence: 0` to get all events. Pass `limit: 0` for no limit.
   Future<List<(String, BigInt)>> listEventsFrom({
     required String stream,
     required BigInt fromSequence,
@@ -1332,12 +2072,58 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
     limit: limit,
   );
 
-  /// Optimize the FTS5 search index to merge segments and reclaim space.
-  ///
-  /// Run periodically (e.g. every 50 matches) to prevent search
-  /// performance degradation from index fragmentation.
+  /// List all jobs in a queue. Returns JSON array.
+  Future<List<String>> listJobs({required String queue}) => RustLib.instance.api
+      .crateApiBridgeThingdBridgeListJobs(that: this, queue: queue);
+
+  /// List all object IDs in a collection. Returns (id, body) pairs.
+  /// `limit` max results (0 for all). `offset` for pagination.
+  Future<List<(String, String)>> listObjects({
+    required String collection,
+    required BigInt limit,
+    required BigInt offset,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgeListObjects(
+    that: this,
+    collection: collection,
+    limit: limit,
+    offset: offset,
+  );
+
+  /// Reject a leased job for retry or dead-letter routing.
+  Future<bool> nackJob({
+    required String queue,
+    required String jobId,
+    required BigInt delayMs,
+    required String error,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgeNackJob(
+    that: this,
+    queue: queue,
+    jobId: jobId,
+    delayMs: delayMs,
+    error: error,
+  );
+
+  /// Optimize the FTS5 search index to merge segments.
   Future<void> optimizeSearchIndex() => RustLib.instance.api
       .crateApiBridgeThingdBridgeOptimizeSearchIndex(that: this);
+
+  /// Push a job onto a queue. Returns the job id.
+  ///
+  /// `body` is the job payload as a JSON string.
+  /// `max_attempts` is the max retry count before dead-letter.
+  /// If `job_id` is empty, one is auto-generated.
+  Future<String> pushJob({
+    required String queue,
+    required String jobId,
+    required String body,
+    required int maxAttempts,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgePushJob(
+    that: this,
+    queue: queue,
+    jobId: jobId,
+    body: body,
+    maxAttempts: maxAttempts,
+  );
 
   /// Insert or replace an object. Returns the stored body.
   Future<String> putObject({
@@ -1359,10 +2145,36 @@ class ThingdBridgeImpl extends RustOpaque implements ThingdBridge {
     objects: objects,
   );
 
-  /// Flush the SQLite WAL into the main database file.
+  /// Full-text search across objects and events.
   ///
-  /// Call this before the app goes to background to prevent data loss.
-  /// Returns `(frames_before, frames_after)` where frames_after should be 0.
+  /// Returns JSON array of search hits with id, collection, text, score, kind.
+  Future<List<String>> search({
+    required String query,
+    required String collection,
+    required BigInt limit,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgeSearch(
+    that: this,
+    query: query,
+    collection: collection,
+    limit: limit,
+  );
+
+  /// Run a time-bucketed aggregation.
+  ///
+  /// `params` is a JSON string:
+  ///   { "function": "...", "field": "...",
+  ///     "bucket": "hour|day|week|month",
+  ///     "from": "ISO8601", "to": "ISO8601" }
+  Future<String> timeseries({
+    required String collection,
+    required String params,
+  }) => RustLib.instance.api.crateApiBridgeThingdBridgeTimeseries(
+    that: this,
+    collection: collection,
+    params: params,
+  );
+
+  /// Flush the SQLite WAL into the main database file.
   Future<(int, int)> walCheckpoint() =>
       RustLib.instance.api.crateApiBridgeThingdBridgeWalCheckpoint(that: this);
 }

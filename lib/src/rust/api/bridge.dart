@@ -6,8 +6,24 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `generate_id`, `job_to_json`, `parse_agg_function`, `parse_time_bucket`
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ThingdBridge>>
 abstract class ThingdBridge implements RustOpaqueInterface {
+  /// Acknowledge a leased job as completed. Returns true if acked.
+  Future<bool> ackJob({required String queue, required String jobId});
+
+  /// Run an aggregation over a collection.
+  ///
+  /// `params` is a JSON string:
+  ///   { "function": "count|sum|avg|min|max",
+  ///     "field": "...", "groupBy": "..." }
+  /// Returns JSON result with total and groups.
+  Future<String> aggregate({
+    required String collection,
+    required String params,
+  });
+
   /// Append an event to a stream. Returns the stored event body.
   Future<String> appendEvent({
     required String stream,
@@ -21,9 +37,27 @@ abstract class ThingdBridge implements RustOpaqueInterface {
     required List<(String, String)> events,
   });
 
+  /// Claim the next ready job from a queue. Returns JSON or empty string.
+  ///
+  /// Returns JSON with id, queue, body, status, attempts.
+  /// Returns empty string if no job available.
+  Future<String> claimJob({required String queue, required BigInt leaseMs});
+
+  /// Count total links.
+  Future<BigInt> countLinks();
+
+  /// Create a directed link between two references. Returns the link id.
+  Future<String> createLink({
+    required String fromRef,
+    required String linkType,
+    required String toRef,
+  });
+
   /// Delete the most recent event from a stream.
-  /// Returns the deleted event body, or None if the stream was empty.
   Future<String?> deleteLastEvent({required String stream});
+
+  /// Delete a link by id. Returns true if deleted.
+  Future<bool> deleteLink({required String id});
 
   /// Delete an object by collection and id. Returns true if deleted.
   Future<bool> deleteObject({required String collection, required String id});
@@ -34,31 +68,69 @@ abstract class ThingdBridge implements RustOpaqueInterface {
   /// Delete all events in a stream. Returns the count of deleted events.
   Future<BigInt> deleteStream({required String stream});
 
+  /// Get neighbors of a reference. Returns JSON array of links.
+  ///
+  /// `direction`: "Outgoing", "Incoming", or "Both" (default).
+  /// `link_type`: optional filter.
+  Future<List<String>> getNeighbors({
+    required String reference,
+    required String direction,
+    String? linkType,
+  });
+
   /// Read an object by collection and id. Returns None if not found.
   Future<String?> getObject({required String collection, required String id});
+
+  /// List dead-letter jobs in a queue. Returns JSON array.
+  Future<List<String>> listDeadJobs({required String queue});
 
   /// List all events in a stream, in ascending sequence order.
   Future<List<String>> listEvents({required String stream});
 
   /// List events from a given sequence number. Returns (body, sequence) pairs.
-  ///
-  /// Only returns events with sequence > `from_sequence`, up to `limit`.
-  /// Pass `from_sequence: 0` to get all events. Pass `limit: 0` for no limit.
   Future<List<(String, BigInt)>> listEventsFrom({
     required String stream,
     required BigInt fromSequence,
     required BigInt limit,
   });
 
+  /// List all jobs in a queue. Returns JSON array.
+  Future<List<String>> listJobs({required String queue});
+
+  /// List all object IDs in a collection. Returns (id, body) pairs.
+  /// `limit` max results (0 for all). `offset` for pagination.
+  Future<List<(String, String)>> listObjects({
+    required String collection,
+    required BigInt limit,
+    required BigInt offset,
+  });
+
+  /// Reject a leased job for retry or dead-letter routing.
+  Future<bool> nackJob({
+    required String queue,
+    required String jobId,
+    required BigInt delayMs,
+    required String error,
+  });
+
   /// Open or create a thingd store at the given file path.
   static Future<ThingdBridge> open({required String path}) =>
       RustLib.instance.api.crateApiBridgeThingdBridgeOpen(path: path);
 
-  /// Optimize the FTS5 search index to merge segments and reclaim space.
-  ///
-  /// Run periodically (e.g. every 50 matches) to prevent search
-  /// performance degradation from index fragmentation.
+  /// Optimize the FTS5 search index to merge segments.
   Future<void> optimizeSearchIndex();
+
+  /// Push a job onto a queue. Returns the job id.
+  ///
+  /// `body` is the job payload as a JSON string.
+  /// `max_attempts` is the max retry count before dead-letter.
+  /// If `job_id` is empty, one is auto-generated.
+  Future<String> pushJob({
+    required String queue,
+    required String jobId,
+    required String body,
+    required int maxAttempts,
+  });
 
   /// Insert or replace an object. Returns the stored body.
   Future<String> putObject({
@@ -72,9 +144,26 @@ abstract class ThingdBridge implements RustOpaqueInterface {
     required List<(String, String, String)> objects,
   });
 
-  /// Flush the SQLite WAL into the main database file.
+  /// Full-text search across objects and events.
   ///
-  /// Call this before the app goes to background to prevent data loss.
-  /// Returns `(frames_before, frames_after)` where frames_after should be 0.
+  /// Returns JSON array of search hits with id, collection, text, score, kind.
+  Future<List<String>> search({
+    required String query,
+    required String collection,
+    required BigInt limit,
+  });
+
+  /// Run a time-bucketed aggregation.
+  ///
+  /// `params` is a JSON string:
+  ///   { "function": "...", "field": "...",
+  ///     "bucket": "hour|day|week|month",
+  ///     "from": "ISO8601", "to": "ISO8601" }
+  Future<String> timeseries({
+    required String collection,
+    required String params,
+  });
+
+  /// Flush the SQLite WAL into the main database file.
   Future<(int, int)> walCheckpoint();
 }

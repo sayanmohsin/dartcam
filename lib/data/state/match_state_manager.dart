@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/match_state.dart';
@@ -5,44 +7,62 @@ import '../models/player_profile.dart';
 import '../models/turn_mutation.dart';
 import '../../core/constants/dartboard_constants.dart';
 import '../../core/vision/dartboard_scorer.dart';
-import '../../services/thingd_service.dart';
+import '../../services/thingd_service_interface.dart';
 
 class MatchStateManager extends ValueNotifier<DartMatchState> {
-  final ThingdService _thingd;
+  final ThingdServiceInterface _thingd;
   String matchId;
 
-  ThingdService get thingd => _thingd;
+  /// Accumulated stats keyed by player ID during the match.
+  final Map<String, _AccumulatedStats> _accStats = {};
+
+  ThingdServiceInterface get thingd => _thingd;
 
   MatchStateManager._({
     required DartMatchState state,
-    required ThingdService thingd,
+    required ThingdServiceInterface thingd,
     required this.matchId,
   })  : _thingd = thingd,
         super(state);
 
-  /// Create a new match and persist it to thingd.
+  /// Create a new match, loading existing profiles for known names.
   static Future<MatchStateManager> create({
-    required ThingdService thingd,
+    required ThingdServiceInterface thingd,
     required List<String> playerNames,
     int gameType = DartboardConstants.defaultGameType,
   }) async {
+    // Load existing profiles to reuse stable player IDs
+    final existing = await _loadExistingProfiles(thingd);
     final matchId = const Uuid().v4();
+
+    final players = playerNames.map((name) {
+      // Reuse existing profile if name matches
+      final match = existing[name.toLowerCase()];
+      if (match != null) {
+        return match.copyWith(currentScore: gameType);
+      }
+      return PlayerProfile(
+        id: const Uuid().v4(),
+        name: name,
+        currentScore: gameType,
+      );
+    }).toList();
+
     final state = DartMatchState(
       gameType: gameType,
       activePlayerIndex: 0,
-      players: playerNames
-          .map((name) => PlayerProfile(
-                id: const Uuid().v4(),
-                name: name,
-                currentScore: gameType,
-              ))
-          .toList(),
+      players: players,
       history: [],
       status: MatchStatus.active,
     );
 
     await thingd.saveMatchConfig(matchId, gameType, playerNames);
     await thingd.setActiveMatchId(matchId);
+
+    // Save player profiles so load can find them by ID
+    for (final player in players) {
+      await thingd.savePlayerProfile(player);
+    }
 
     return MatchStateManager._(
       state: state,
@@ -53,7 +73,7 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
 
   /// Load the active match from thingd by replaying events.
   /// Returns null if no active match exists.
-  static Future<MatchStateManager?> load(ThingdService thingd) async {
+  static Future<MatchStateManager?> load(ThingdServiceInterface thingd) async {
     final matchId = await thingd.getActiveMatchId();
     if (matchId == null) return null;
 
@@ -63,27 +83,30 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
     final gameType = config['gameType'] as int;
     final playerNames = List<String>.from(config['playerNames'] as List);
 
+    // Load existing profiles to get stable IDs and lifetime stats
+    final existing = await _loadExistingProfiles(thingd);
     final turns = await thingd.listTurns(matchId);
 
-    // Rebuild state by replaying events
     var activePlayerIndex = 0;
-    var players = playerNames
-        .map((name) => PlayerProfile(
-              id: const Uuid().v4(),
-              name: name,
-              currentScore: gameType,
-            ))
-        .toList();
+    var players = playerNames.map((name) {
+      final match = existing[name.toLowerCase()];
+      if (match != null) {
+        return match.copyWith(currentScore: gameType);
+      }
+      return PlayerProfile(
+        id: const Uuid().v4(),
+        name: name,
+        currentScore: gameType,
+      );
+    }).toList();
 
     final history = <TurnMutation>[];
 
-    // Cache the last sequence for future incremental replay
     if (turns.isNotEmpty) {
       thingd.setLastSequence(matchId, turns.length);
     }
 
     for (final turn in turns) {
-      // Find the player and apply the turn
       final playerIndex = players.indexWhere((p) => p.id == turn.playerId);
       if (playerIndex < 0) continue;
 
@@ -115,7 +138,7 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
     );
   }
 
-  static Future<void> clear(ThingdService thingd) async {
+  static Future<void> clear(ThingdServiceInterface thingd) async {
     await thingd.clearAll();
   }
 
@@ -168,15 +191,22 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
           : (isOneBust ? BustResult.oneBust : BustResult.notDouble);
     }
 
+    // Track stats (even non-checkout turns)
+    _accStats[player.id] ??= _AccumulatedStats();
+    _accStats[player.id]!.dartsThisMatch += scores.length;
+    if (totalScore == 180) _accStats[player.id]!.eightiesThisMatch++;
+    if (totalScore >= 100) _accStats[player.id]!.centuriesThisMatch++;
+    if (isCheckout && totalScore > _accStats[player.id]!.bestCheckout) {
+      _accStats[player.id]!.bestCheckout = totalScore;
+    }
+
     final mutation = TurnMutation(
       playerId: player.id,
       detectedScores: List.unmodifiable(scores),
       totalTurnScore: totalScore,
       scoreBeforeTurn: scoreBefore,
-      dartLabels:
-          darts?.map((d) => d.label).toList(),
-      dartMultipliers:
-          darts?.map((d) => d.multiplier).toList(),
+      dartLabels: darts?.map((d) => d.label).toList(),
+      dartMultipliers: darts?.map((d) => d.multiplier).toList(),
       isAutoDetected: isAutoDetected,
     );
 
@@ -195,7 +225,6 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
       status: isComplete ? MatchStatus.completed : MatchStatus.active,
     );
 
-    // Persist event to thingd
     await _thingd.appendTurn(matchId, mutation);
 
     if (isComplete) {
@@ -204,6 +233,8 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
         winnerPlayerId: player.id,
         totalTurns: value.history.length + 1,
       );
+      await _persistPlayerProfiles(player.id);
+      await _linkPlayersToMatch();
     }
 
     if (!isComplete) {
@@ -242,7 +273,6 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
       status: MatchStatus.active,
     );
 
-    // Delete last event from thingd
     await _thingd.undoLastTurn(matchId);
   }
 
@@ -252,25 +282,31 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
     final newGameType = gameType ?? value.gameType;
     final playerNames = value.players.map((p) => p.name).toList();
 
-    // Delete old match stream and create new match
     await _thingd.deleteMatch(matchId);
 
     final newMatchId = const Uuid().v4();
     await _thingd.saveMatchConfig(newMatchId, newGameType, playerNames);
     await _thingd.setActiveMatchId(newMatchId);
 
+    _accStats.clear();
     matchId = newMatchId;
 
+    // Reuse existing profile IDs
+    final existing = await _loadExistingProfiles(_thingd);
     value = DartMatchState(
       gameType: newGameType,
       activePlayerIndex: 0,
-      players: playerNames
-          .map((name) => PlayerProfile(
-                id: const Uuid().v4(),
-                name: name,
-                currentScore: newGameType,
-              ))
-          .toList(),
+      players: playerNames.map((name) {
+        final match = existing[name.toLowerCase()];
+        if (match != null) {
+          return match.copyWith(currentScore: newGameType);
+        }
+        return PlayerProfile(
+          id: const Uuid().v4(),
+          name: name,
+          currentScore: newGameType,
+        );
+      }).toList(),
       history: [],
       status: MatchStatus.active,
     );
@@ -279,7 +315,66 @@ class MatchStateManager extends ValueNotifier<DartMatchState> {
   Future<void> endMatch() async {
     await _thingd.deleteMatch(matchId);
     await _thingd.setActiveMatchId(null);
+    _accStats.clear();
   }
+
+  // ── Private helpers ────────────────────────────────────────────────
+
+  /// Load all existing profiles indexed by lowercased name.
+  static Future<Map<String, PlayerProfile>> _loadExistingProfiles(
+    ThingdServiceInterface thingd,
+  ) async {
+    final profiles = await thingd.listPlayerProfiles();
+    final map = <String, PlayerProfile>{};
+    for (final p in profiles) {
+      map[p.name.toLowerCase()] = p;
+    }
+    return map;
+  }
+
+  /// Persist updated player profiles after a match completes.
+  Future<void> _persistPlayerProfiles(String winnerId) async {
+    for (final player in value.players) {
+      final acc = _accStats[player.id] ?? _AccumulatedStats();
+      // Load existing lifetime stats from thingd
+      final existing = await _thingd.getPlayerProfile(player.id);
+
+      final updated = (existing ?? player).copyWith(
+        totalMatches: (existing?.totalMatches ?? 0) + 1,
+        totalWins: (existing?.totalWins ?? 0) + (player.id == winnerId ? 1 : 0),
+        totalDartsThrown:
+            (existing?.totalDartsThrown ?? 0) + acc.dartsThisMatch,
+        oneEightyCount:
+            (existing?.oneEightyCount ?? 0) + acc.eightiesThisMatch,
+        centuryCount:
+            (existing?.centuryCount ?? 0) + acc.centuriesThisMatch,
+        highestCheckout: _max(
+          existing?.highestCheckout ?? 0,
+          acc.bestCheckout,
+        ),
+      );
+
+      await _thingd.savePlayerProfile(updated);
+    }
+    _accStats.clear();
+  }
+
+  /// Link all players to this match in the graph.
+  Future<void> _linkPlayersToMatch() async {
+    for (final player in value.players) {
+      await _thingd.linkPlayerToMatch(player.id, matchId);
+    }
+  }
+
+  static int _max(int a, int b) => a > b ? a : b;
+}
+
+/// Per-player stats accumulated during a match.
+class _AccumulatedStats {
+  int dartsThisMatch = 0;
+  int eightiesThisMatch = 0;
+  int centuriesThisMatch = 0;
+  int bestCheckout = 0;
 }
 
 enum BustResult { none, overBust, oneBust, notDouble }

@@ -23,11 +23,14 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
   bool _isTesting = false;
   bool _isFromEnv = false;
   String? _error;
+  String? _userEmail;
+  bool _emailSaving = false;
 
   final _serverUrlController = TextEditingController(
     text: EnvConfig.cloudUrl,
   );
   final _apiKeyController = TextEditingController();
+  final _emailController = TextEditingController();
 
   @override
   void initState() {
@@ -40,17 +43,21 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
   void dispose() {
     _serverUrlController.dispose();
     _apiKeyController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
     final creds = await _auth.loadCredentials();
     final fromEnv = await _auth.isUsingEnvConfig();
+    final email = await widget.thingd.getUserEmail();
     if (mounted) {
       setState(() {
         _creds = creds;
         _isFromEnv = fromEnv;
         _isChecking = false;
+        _userEmail = email;
+        _emailController.text = email ?? '';
       });
     }
     if (creds != null) {
@@ -131,6 +138,25 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _saveEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+    setState(() => _emailSaving = true);
+    await widget.thingd.saveUserEmail(email);
+    if (mounted) {
+      setState(() {
+        _userEmail = email;
+        _emailSaving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email saved'),
+          backgroundColor: Color(0xFF006400),
+        ),
+      );
     }
   }
 
@@ -321,6 +347,59 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Email
+              const Text(
+                'Your Email',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _emailController,
+                      style: const TextStyle(color: Colors.white),
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: 'you@example.com',
+                        hintStyle: TextStyle(color: Colors.grey[600]),
+                        filled: true,
+                        fillColor: kInputBg,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: kNeonOrange),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _emailSaving ? null : _saveEmail,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kNeonOrange,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[700],
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: _emailSaving
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
               // Info text
               Container(
                 width: double.infinity,
@@ -464,7 +543,7 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                       fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                _CloudUsageStatus(creds: _creds!, auth: _auth),
+                _CloudUsageStatus(creds: _creds!, auth: _auth, email: _userEmail ?? ''),
               ],
             ],
           ),
@@ -477,10 +556,12 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
 class _CloudUsageStatus extends StatefulWidget {
   final CloudCredentials creds;
   final CloudAuthService auth;
+  final String email;
 
   const _CloudUsageStatus({
     required this.creds,
     required this.auth,
+    required this.email,
   });
 
   @override
@@ -498,7 +579,7 @@ class _CloudUsageStatusState extends State<_CloudUsageStatus> {
 
   Future<void> _loadStats() async {
     final svc = CloudUsageService(widget.auth);
-    final history = await svc.fetchMatchHistory(widget.creds);
+    final history = await svc.fetchMatchHistory(widget.creds, widget.email);
     if (mounted) {
       setState(() => _matchCount = history.length);
     }

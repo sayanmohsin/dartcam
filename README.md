@@ -95,18 +95,27 @@ flutter run
 
 ### Cloud configuration
 
-Copy `.env.example` to `.env` and fill in your thingd.cloud API key:
+thingd.cloud sync is optional. It stores aggregate match results in a shared cloud
+thingd instance, scoped by the email you enter on first launch.
+
+To enable it, generate an API token and write it to `.env`:
 
 ```bash
-cp .env.example .env
+# One-time: authenticate and create a token
+bash scripts/setup-cloud.sh
+
+# Or manually:
+#   npx @thingd/cli cloud login
+#   npx @thingd/cli cloud token create dartcam
+#   cp .env.example .env   # and paste the token
 ```
 
-The `.env` file is gitignored. See [thingd.cloud](https://thingd.cloud) to get an API key.
+> `.env` is gitignored. It is read at build time via `--dart-define-from-file`.
 
 ### Build release APK
 
 ```bash
-cp .env.example .env   # if not already configured
+bash scripts/setup-cloud.sh   # if not already configured
 flutter build apk --release --dart-define-from-file=.env
 ```
 

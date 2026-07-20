@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../data/state/match_state_manager.dart';
 import '../../services/thingd_service.dart';
+import '06_email_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   final ThingdService thingd;
@@ -43,11 +44,29 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
+    if (savedManager != null) {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, _, _) => GameScreen(stateManager: savedManager),
+          transitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (_, animation, _, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+      return;
+    }
+
+    // Check if user has set their email yet
+    final email = await widget.thingd.getUserEmail();
+    if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => savedManager != null
-            ? GameScreen(stateManager: savedManager)
-            : SetupScreen(thingd: widget.thingd),
+        pageBuilder: (_, _, _) =>
+            email != null
+                ? SetupScreen(thingd: widget.thingd)
+                : EmailScreen(thingd: widget.thingd),
         transitionDuration: const Duration(milliseconds: 400),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);

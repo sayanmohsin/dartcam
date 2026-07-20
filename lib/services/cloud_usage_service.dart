@@ -11,10 +11,10 @@ class CloudUsageService {
 
   /// Push a completed match result to the thingd.cloud object store.
   ///
-  /// Only called when a match ends. Stores aggregate data only —
-  /// no individual turns or per-dart scores.
+  /// Data is scoped by email in the object path.
   Future<bool> pushMatchResult(
     CloudCredentials creds,
+    String email,
     String matchId,
     DartMatchState state,
   ) async {
@@ -24,8 +24,9 @@ class CloudUsageService {
     final result = await _auth.put(
       creds.serverUrl,
       creds.apiKey,
-      '/v1/objects/match_results/$matchId',
+      '/v1/objects/match_results/${email}_$matchId',
       {
+        'email': email,
         'matchId': matchId,
         'gameType': state.gameType,
         'totalTurns': state.history.length,
@@ -39,17 +40,19 @@ class CloudUsageService {
     return result != null;
   }
 
-  /// Push a player's aggregate stats to the cloud.
+  /// Push a player's aggregate stats to the cloud, scoped by email.
   Future<bool> pushPlayerStats(
     CloudCredentials creds,
+    String email,
     String playerId,
     Map<String, dynamic> stats,
   ) async {
     final result = await _auth.put(
       creds.serverUrl,
       creds.apiKey,
-      '/v1/objects/player_stats/$playerId',
+      '/v1/objects/player_stats/${email}_$playerId',
       {
+        'email': email,
         'playerId': playerId,
         ...stats,
         'updatedAt': DateTime.now().toIso8601String(),
@@ -61,19 +64,21 @@ class CloudUsageService {
   /// Fetch a player's stats from the cloud.
   Future<Map<String, dynamic>?> fetchPlayerStats(
     CloudCredentials creds,
+    String email,
     String playerId,
   ) async {
     final result = await _auth.get(
       creds.serverUrl,
       creds.apiKey,
-      '/v1/objects/player_stats/$playerId',
+      '/v1/objects/player_stats/${email}_$playerId',
     );
     return result;
   }
 
-  /// Fetch all match results from the cloud (for leaderboard/history).
+  /// Fetch match results for a specific email.
   Future<List<Map<String, dynamic>>> fetchMatchHistory(
     CloudCredentials creds,
+    String email,
   ) async {
     final result = await _auth.get(
       creds.serverUrl,
@@ -83,6 +88,11 @@ class CloudUsageService {
     if (result == null) return [];
     final data = result['data'];
     if (data is! List) return [];
-    return data.cast<Map<String, dynamic>>();
+    // Filter by email client-side
+    final filtered = data.where((item) {
+      final body = item['body'] as Map<String, dynamic>?;
+      return body?['email'] == email;
+    }).toList();
+    return filtered.cast<Map<String, dynamic>>();
   }
 }

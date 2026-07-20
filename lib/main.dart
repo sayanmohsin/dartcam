@@ -12,6 +12,7 @@ import 'presentation/widgets/manual_picker_grid.dart';
 import 'core/vision/dartboard_scorer.dart';
 import 'data/state/match_state_manager.dart';
 import 'services/thingd_service.dart';
+import 'services/thingd_service_interface.dart';
 import 'services/cloud_auth_service.dart';
 import 'data/models/cloud_credentials.dart';
 
@@ -128,7 +129,7 @@ class _AppLoaderState extends State<AppLoader> with WidgetsBindingObserver {
 // ---------- SETUP SCREEN ----------
 
 class SetupScreen extends StatefulWidget {
-  final ThingdService thingd;
+  final ThingdServiceInterface thingd;
   const SetupScreen({super.key, required this.thingd});
 
   @override
@@ -432,7 +433,7 @@ class _SetupScreenState extends State<SetupScreen> {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => CloudSettingsScreen(thingd: widget.thingd),
+                          builder: (_) => CloudSettingsScreen(thingd: widget.thingd as ThingdService),
                         ),
                       );
                     },

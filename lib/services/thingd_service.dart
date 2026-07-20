@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 
 import '../data/models/detection_log.dart';
+import '../data/models/player_profile.dart';
 import '../data/models/turn_mutation.dart';
 import '../src/rust/api/bridge.dart';
 import '../src/rust/frb_generated.dart';
+import 'thingd_service_interface.dart';
 
-class ThingdService {
+class ThingdService implements ThingdServiceInterface {
   final ThingdBridge _bridge;
 
   /// Public access to the underlying bridge (needed by CloudAuthService).
@@ -87,9 +89,6 @@ class ThingdService {
   }
 
   /// Fetch only turns after the given sequence number.
-  ///
-  /// Returns a list of `(TurnMutation, sequence)` pairs.
-  /// Pass `fromSequence: 0` to fetch all, `limit: 0` for no limit.
   Future<List<(TurnMutation, int)>> listTurnsFrom(
     String matchId, {
     int fromSequence = 0,
@@ -159,7 +158,7 @@ class ThingdService {
     }
   }
 
-  // ── Detection logs (EventLog) ────────────────────────────────────────
+  // ── Detection logs (EventLog) ──────────────────────────────────────
 
   Future<void> appendDetectionLog(
     String matchId,
@@ -173,18 +172,157 @@ class ThingdService {
     );
   }
 
+  // ── Player Profiles (ObjectStore) ────────────────────────────────────
+
+  Future<void> savePlayerProfile(PlayerProfile profile) async {
+    await _bridge.putObject(
+      collection: 'players',
+      id: profile.id,
+      body: jsonEncode(profile.toJson()),
+    );
+  }
+
+  Future<PlayerProfile?> getPlayerProfile(String id) async {
+    final body = await _bridge.getObject(collection: 'players', id: id);
+    if (body == null) return null;
+    return PlayerProfile.fromJson(jsonDecode(body) as Map<String, dynamic>);
+  }
+
+  /// Fetch all known player profiles.
+  Future<List<PlayerProfile>> listPlayerProfiles() async {
+    final objects = await _bridge.listObjects(
+      collection: 'players',
+      limit: BigInt.from(100),
+      offset: BigInt.zero,
+    );
+    return objects.map((pair) {
+      final (_, body) = pair;
+      return PlayerProfile.fromJson(jsonDecode(body) as Map<String, dynamic>);
+    }).toList();
+  }
+
+  // ── User Email (ObjectStore) ─────────────────────────────────────────
+
+  /// Save the user's email for cloud scoping.
+  Future<void> saveUserEmail(String email) async {
+    await _bridge.putObject(
+      collection: 'config',
+      id: 'cloud_user',
+      body: jsonEncode({'email': email, 'savedAt': DateTime.now().toIso8601String()}),
+    );
+  }
+
+  /// Load the user's saved email. Returns null if not set.
+  Future<String?> getUserEmail() async {
+    final body = await _bridge.getObject(collection: 'config', id: 'cloud_user');
+    if (body == null) return null;
+    final json = jsonDecode(body) as Map<String, dynamic>;
+    return json['email'] as String?;
+  }
+
+  // ── Search (Searcher) ───────────────────────────────────────────────
+
+  /// Full-text search across match history.
+  Future<List<Map<String, dynamic>>> searchMatches(
+    String query, {
+    int limit = 20,
+  }) async {
+    final hits = await _bridge.search(
+      query: query,
+      collection: 'match_history',
+      limit: BigInt.from(limit),
+    );
+    return hits.map((h) => jsonDecode(h) as Map<String, dynamic>).toList();
+  }
+
+  // ── Aggregation (AggregateStore) ────────────────────────────────────
+
+  /// Run an aggregation over a collection.
+  /// [params] is a JSON string with function, field, groupBy.
+  Future<Map<String, dynamic>> aggregate(
+    String collection,
+    String params,
+  ) async {
+    final result = await _bridge.aggregate(
+      collection: collection,
+      params: params,
+    );
+    return jsonDecode(result) as Map<String, dynamic>;
+  }
+
+  // ── Queue (QueueStore) ──────────────────────────────────────────────
+
+  /// Push a CV processing job to the background queue.
+  Future<String> enqueueCVTask(
+    String imagePath,
+    String matchId, {
+    int maxAttempts = 3,
+  }) async {
+    return await _bridge.pushJob(
+      queue: 'vision',
+      jobId: '',
+      body: jsonEncode({'imagePath': imagePath, 'matchId': matchId}),
+      maxAttempts: maxAttempts,
+    );
+  }
+
+  /// Claim a vision task job.
+  Future<Map<String, dynamic>?> claimCVTask({int leaseMs = 30000}) async {
+    final result = await _bridge.claimJob(
+      queue: 'vision',
+      leaseMs: BigInt.from(leaseMs),
+    );
+    if (result.isEmpty) return null;
+    return jsonDecode(result) as Map<String, dynamic>;
+  }
+
+  /// Acknowledge a vision task.
+  Future<bool> ackCVTask(String jobId) async {
+    return await _bridge.ackJob(queue: 'vision', jobId: jobId);
+  }
+
+  /// Reject a vision task for retry.
+  Future<bool> nackCVTask(String jobId, {int delayMs = 5000, String error = ''}) async {
+    return await _bridge.nackJob(
+      queue: 'vision',
+      jobId: jobId,
+      delayMs: BigInt.from(delayMs),
+      error: error,
+    );
+  }
+
+  // ── Graph Links (LinkStore) ─────────────────────────────────────────
+
+  /// Link a player to a match.
+  Future<void> linkPlayerToMatch(String playerId, String matchId) async {
+    await _bridge.createLink(
+      fromRef: 'player_$playerId',
+      linkType: 'played',
+      toRef: 'match_$matchId',
+    );
+  }
+
+  /// Get all matches a player has played.
+  Future<List<String>> getPlayerMatchIds(String playerId) async {
+    final links = await _bridge.getNeighbors(
+      reference: 'player_$playerId',
+      direction: 'Outgoing',
+      linkType: 'played',
+    );
+    return links.map((l) {
+      final json = jsonDecode(l) as Map<String, dynamic>;
+      return (json['toRef'] as String).replaceFirst('match_', '');
+    }).toList();
+  }
+
   // ── Lifecycle ───────────────────────────────────────────────────────
 
   /// Flush the SQLite WAL into the main database file.
-  ///
-  /// Call before the app goes to background.
   Future<void> walCheckpoint() async {
     await _bridge.walCheckpoint();
   }
 
   /// Optimize the FTS5 search index.
-  ///
-  /// Run periodically (e.g. every 50 turns) to prevent fragmentation.
   Future<void> optimizeSearchIndex() async {
     await _bridge.optimizeSearchIndex();
   }
