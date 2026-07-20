@@ -1,7 +1,13 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/constants/dartboard_constants.dart';
 import 'manual_picker_grid.dart' show ManualPickerResult;
+
+// Enlargement factors for easier tapping
+const _bullFactor = 1.9;
+const _ringFactor = 1.3;
+const _snapAngleDeg = 2.0;
 
 class DartboardPicker extends StatefulWidget {
   final void Function(ManualPickerResult?) onScore;
@@ -51,7 +57,8 @@ class _DartboardPickerState extends State<DartboardPicker>
     final mmPerPx = DartboardConstants.boardRadius / boardRadius;
     final distanceMm = distance * mmPerPx;
 
-    if (distanceMm > DartboardConstants.doubleOuterRadius + 5) {
+    // Enlarged miss boundary
+    if (distanceMm > DartboardConstants.doubleOuterRadius * _ringFactor) {
       if (_hasSelection) {
         setState(() {
           _preview = null;
@@ -65,6 +72,7 @@ class _DartboardPickerState extends State<DartboardPicker>
 
     final result = _scoreFromPolar(distanceMm, dx, dy);
     if (result != null) {
+      HapticFeedback.lightImpact();
       setState(() {
         _preview = result;
         _hasSelection = true;
@@ -78,26 +86,43 @@ class _DartboardPickerState extends State<DartboardPicker>
     double dx,
     double dy,
   ) {
-    final angle = atan2(dx, -dy) * 180 / pi;
-    final normalizedAngle = (angle + 360) % 360;
-    final wedgeIndex =
-        (normalizedAngle / DartboardConstants.wedgeAngleDegrees).floor() % 20;
+    var angle = atan2(dx, -dy) * 180 / pi;
+    var normalizedAngle = (angle + 360) % 360;
+
+    // Snap to nearest number if within 2° of a wedge boundary
+    final rawWedgeIndex = normalizedAngle / DartboardConstants.wedgeAngleDegrees;
+    final frac = rawWedgeIndex - rawWedgeIndex.floor();
+    int wedgeIndex;
+    if (frac < _snapAngleDeg / DartboardConstants.wedgeAngleDegrees) {
+      wedgeIndex = rawWedgeIndex.floor() % 20;
+    } else if (frac > 1 - _snapAngleDeg / DartboardConstants.wedgeAngleDegrees) {
+      wedgeIndex = (rawWedgeIndex.floor() + 1) % 20;
+    } else {
+      wedgeIndex = rawWedgeIndex.floor() % 20;
+    }
     final score = DartboardConstants.wedgeValues[wedgeIndex];
 
-    if (distanceMm <= DartboardConstants.bullseyeInnerRadius) {
+    // Enlarged bull hit zones
+    if (distanceMm <= DartboardConstants.bullseyeInnerRadius * _bullFactor) {
       return const ManualPickerResult(score: 50, multiplier: 1, label: 'BULL');
     }
-    if (distanceMm <= DartboardConstants.bullseyeOuterRadius) {
+    if (distanceMm <= DartboardConstants.bullseyeOuterRadius * _bullFactor) {
       return const ManualPickerResult(score: 25, multiplier: 1, label: '25');
     }
-    if (distanceMm >= DartboardConstants.tripleInnerRadius &&
-        distanceMm <= DartboardConstants.tripleOuterRadius) {
+
+    // Enlarged ring hit zones
+    final extTripleInner = DartboardConstants.tripleInnerRadius - (99 - 99 / _ringFactor);
+    final extTripleOuter = DartboardConstants.tripleOuterRadius + (107 * _ringFactor - 107);
+    final extDoubleInner = DartboardConstants.doubleInnerRadius - (162 - 162 / _ringFactor);
+    final extDoubleOuter = DartboardConstants.doubleOuterRadius * _ringFactor;
+
+    if (distanceMm >= extTripleInner && distanceMm <= extTripleOuter) {
       return ManualPickerResult(score: score, multiplier: 3, label: 'T$score');
     }
-    if (distanceMm >= DartboardConstants.doubleInnerRadius &&
-        distanceMm <= DartboardConstants.doubleOuterRadius) {
+    if (distanceMm >= extDoubleInner && distanceMm <= extDoubleOuter) {
       return ManualPickerResult(score: score, multiplier: 2, label: 'D$score');
     }
+
     return ManualPickerResult(score: score, multiplier: 1, label: '$score');
   }
 
@@ -125,24 +150,18 @@ class _DartboardPickerState extends State<DartboardPicker>
                       child: SizedBox(
                         width: size,
                         height: size,
-                        child: Stack(
-                          children: [
-                            _buildBoard(size),
-                            if (_hasSelection && _preview != null)
-                              Positioned(
-                                top: size * 0.08,
-                                left: size * 0.25,
-                                right: size * 0.25,
-                                child: _buildPopover(size),
-                              ),
-                          ],
-                        ),
+                        child: _buildBoard(size),
                       ),
                     );
                   },
                 ),
               ),
             ),
+            if (_hasSelection && _preview != null)
+              _buildConfirmationBar()
+            else
+              _buildMissButton(),
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -165,81 +184,104 @@ class _DartboardPickerState extends State<DartboardPicker>
     );
   }
 
-  Widget _buildPopover(double boardSize) {
+  Widget _buildConfirmationBar() {
     final label = _preview!.label;
     final totalScore = _preview!.score * _preview!.multiplier;
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: const Color(0xFFFF6D00).withOpacity(0.6),
-            width: 1.5,
-          ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFFF6D00).withOpacity(0.5),
+          width: 1.5,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-              ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
             ),
-            const SizedBox(width: 8),
-            Text(
-              '$totalScore',
-              style: const TextStyle(
-                color: Color(0xFFFF6D00),
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '= $totalScore',
+            style: const TextStyle(
+              color: Color(0xFFFF6D00),
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(width: 4),
-            GestureDetector(
-              onTap: _confirm,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF6D00),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(
-                  Icons.check,
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: _confirm,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6D00),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'ADD',
+                style: TextStyle(
                   color: Colors.white,
-                  size: 18,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const SizedBox(width: 4),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _preview = null;
-                  _hasSelection = false;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF424242),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(
-                  Icons.close,
-                  color: Colors.white70,
-                  size: 18,
-                ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _preview = null;
+                _hasSelection = false;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF424242),
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: const Icon(Icons.close, color: Colors.white70, size: 20),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: SizedBox(
+        width: double.infinity,
+        child: TextButton(
+          onPressed: () => widget.onScore(null),
+          style: TextButton.styleFrom(
+            backgroundColor: const Color(0xFF2A2A2A),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: const Text(
+            'MISS',
+            style: TextStyle(
+              color: Colors.white38,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+            ),
+          ),
         ),
       ),
     );
@@ -294,9 +336,6 @@ class _DartboardPainter extends CustomPainter {
     final startAngle = wedgeIndex * wedgeAngle - pi / 2 - wedgeAngle / 2;
     final endAngle = startAngle + wedgeAngle;
 
-    // Determine inner and outer radius based on multiplier
-    // For singles: highlight the entire wedge (both outer and inner single bands)
-    // For triples/doubles: highlight just that ring
     final double innerRadius, outerRadius;
     switch (preview!.multiplier) {
       case 3:
@@ -310,7 +349,6 @@ class _DartboardPainter extends CustomPainter {
         outerRadius = DartboardConstants.doubleInnerRadius / mmPerPx;
     }
 
-    // Draw the highlighted area with a neon orange overlay
     final highlightPath = Path();
     highlightPath.moveTo(
       center.dx + innerRadius * cos(startAngle),
