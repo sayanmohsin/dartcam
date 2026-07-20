@@ -150,6 +150,7 @@ class _DartboardPickerState extends State<DartboardPicker>
                         width: size,
                         height: size,
                         child: Stack(
+                          clipBehavior: Clip.none,
                           children: [
                             _buildBoard(size),
                             if (_hasSelection && _preview != null)
@@ -191,9 +192,9 @@ class _DartboardPickerState extends State<DartboardPicker>
 
     return Positioned(
       top: isBull ? null : boardSize * 0.08,
-      bottom: isBull ? boardSize * 0.08 : null,
-      left: boardSize * 0.25,
-      right: boardSize * 0.25,
+      bottom: isBull ? boardSize * 0.12 : null,
+      left: isBull ? boardSize * 0.12 : boardSize * 0.25,
+      right: isBull ? boardSize * 0.12 : boardSize * 0.25,
       child: Material(
         color: Colors.transparent,
         child: Container(
