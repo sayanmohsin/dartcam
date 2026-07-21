@@ -33,7 +33,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.thingdcloud.dartcam"
+        applicationId = "app.dartcam"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
