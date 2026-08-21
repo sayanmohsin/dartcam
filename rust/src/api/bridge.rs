@@ -4,22 +4,22 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use thingd::{
     AggregateFunction, AggregateOptions, AggregateStore, EventLog, Link, LinkDirection,
     LinkQueryOptions, LinkStore, ListEventsOptions, MemoryEvent, MemoryObject, ObjectStore,
-    QueueClaimOptions, QueueJob, QueueNackOptions, QueueStore, SearchOptions, Searcher,
-    SqliteThingStore, TimeBucket, TimeSeriesOptions,
+    PersistentEngine, QueueClaimOptions, QueueJob, QueueNackOptions, QueueStore, SearchOptions,
+    Searcher, TimeBucket, TimeSeriesOptions,
 };
 
-/// A thread-safe wrapper around thingd's SQLite-backed store.
+/// A thread-safe wrapper around thingd's RocksDB-backed persistent engine.
 ///
 /// Exposes all 6 storage traits to Dart via FRB:
 /// ObjectStore, EventLog, Searcher, AggregateStore, QueueStore, LinkStore.
 pub struct ThingdBridge {
-    inner: Mutex<SqliteThingStore>,
+    inner: Mutex<PersistentEngine>,
 }
 
 impl ThingdBridge {
     /// Open or create a thingd store at the given file path.
     pub fn open(path: String) -> Result<Self, String> {
-        let store = SqliteThingStore::open(&path).map_err(|e| e.to_string())?;
+        let store = PersistentEngine::open(&path).map_err(|e| e.to_string())?;
         Ok(Self {
             inner: Mutex::new(store),
         })

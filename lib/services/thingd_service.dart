@@ -23,7 +23,10 @@ class ThingdService implements ThingdServiceInterface {
   static Future<ThingdService> open() async {
     await RustLib.init();
     final dir = await getApplicationDocumentsDirectory();
-    final bridge = await ThingdBridge.open(path: '${dir.path}/thingd.db');
+    // Thingd 0.83.2 uses a RocksDB-backed directory. Keep this path distinct
+    // from the retired SQLite file because this release intentionally starts
+    // with a fresh local store.
+    final bridge = await ThingdBridge.open(path: '${dir.path}/thingd-rocksdb');
     return ThingdService._(bridge);
   }
 

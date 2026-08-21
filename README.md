@@ -72,7 +72,7 @@ All processing happens **on your device**. No internet required for scoring.
 | Camera | camera (CameraX on Android, AVFoundation on iOS) |
 | ML detection | TFLite via tflite_flutter (DeepDarts D2 YOLOv4-tiny) |
 | State management | ValueNotifier + MatchStateManager (event-sourced) |
-| Local persistence | thingd v0.49.7 (embedded Rust via flutter_rust_bridge) |
+| Local persistence | thingd v0.83.2 RocksDB (embedded Rust via flutter_rust_bridge) |
 | Cloud sync (optional) | thingd.cloud REST API (email-scoped) |
 | Tests | 81 Dart + 27 Rust (108 total) |
 | SVG icons | flutter_svg |
@@ -116,7 +116,7 @@ lib/
 rust/
 ├── src/api/bridge.rs                       # FRB bridge: all 6 thingd traits
 ├── tests/bridge_tests.rs                   # 27 Rust integration tests
-└── Cargo.toml                              # thingd v0.49.7 + sqlite feature
+└── Cargo.toml                              # thingd v0.83.2 + RocksDB feature
 ```
 
 ## Getting Started
