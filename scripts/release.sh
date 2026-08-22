@@ -13,9 +13,11 @@ BUILD_DIR="build/app/outputs"
 
 echo "Building release artifacts..."
 ENV_FILE=""
-if [ -f ".env" ]; then
+if [ "${DARTCAM_INCLUDE_CLOUD_CONFIG:-false}" = "true" ] && [ -f ".env" ]; then
   ENV_FILE="--dart-define-from-file=.env"
   echo "  Loading cloud config from .env"
+else
+  echo "  Building without cloud config"
 fi
 
 flutter build appbundle --release $ENV_FILE
