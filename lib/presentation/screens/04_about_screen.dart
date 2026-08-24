@@ -69,7 +69,7 @@ class _AboutScreenState extends State<AboutScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'v0.2.0 Beta',
+                  'v0.2.1 Beta',
                   style: TextStyle(
                     color: Colors.white24,
                     fontSize: 12,
@@ -87,7 +87,7 @@ class _AboutScreenState extends State<AboutScreen> {
                     ),
                   ),
                   child: const Text(
-                    'Made for dart nights with friends.\nNo servers, no accounts —\njust you, the board, and the game.',
+                    'Made for dart nights with friends.\nNo account or password required —\noptional email-scoped cloud sync.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white70,

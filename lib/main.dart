@@ -450,7 +450,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   ),
                   const SizedBox(width: 4),
                   const Text(
-                    'v0.2.0 Beta',
+                    'v0.2.1 Beta',
                     style: TextStyle(color: Colors.white24, fontSize: 12),
                   ),
                 ],

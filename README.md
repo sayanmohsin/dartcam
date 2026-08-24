@@ -11,7 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-android%20%7C%20ios-blue?style=flat-square" alt="Platforms" />
-  <img src="https://img.shields.io/badge/version-0.2.0--beta-FF6D00?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.2.1--beta-FF6D00?style=flat-square" alt="Version" />
   <img src="https://img.shields.io/badge/flutter-3.44-02569B?style=flat-square&logo=flutter" alt="Flutter" />
 </p>
 
@@ -19,15 +19,15 @@
 
 ## Download
 
-> **Latest:** [v0.2.0 Beta](https://github.com/sayanmohsin/dartcam/releases/tag/v0.2.0-beta) — download the APK and install on your Android device.
+> **Current:** v0.2.1+2 Beta. Download available builds from [GitHub Releases](https://github.com/sayanmohsin/dartcam/releases) and install the APK on your Android device.
 
-APK: `DartCam-v0.2.0-beta.apk`
+The release script produces `DartCam-v0.2.1.apk` for the arm64 Android build.
 
 ---
 
 ## What is DartCam?
 
-DartCam is a clean, no-fuss dart scoring app. No accounts required, no distractions — just you, the board, and the game.
+DartCam is a clean, no-fuss dart scoring app. No account or password is required; optional cloud sync uses an email identifier to scope data.
 
 **Two ways to score:**
 - **Camera** — snap a photo of the board after your throw, DartCam detects where your darts landed using on-device ML
@@ -153,16 +153,19 @@ bash scripts/setup-cloud.sh
 
 ```bash
 bash scripts/setup-cloud.sh          # if not already configured
-flutter build apk --release --dart-define-from-file=.env
+flutter build apk --release
+
+# Only include cloud configuration when explicitly approved for the artifact:
+DARTCAM_INCLUDE_CLOUD_CONFIG=true ./scripts/release.sh
 ```
 
-### Update beta release
+### Publish beta release
 
 ```bash
 ./scripts/release.sh
 ```
 
-Builds a release APK (with `.env` if present) and replaces the GitHub release.
+Builds an AAB and arm64 APK, then creates a versioned GitHub release. Cloud configuration is excluded by default.
 
 ## Testing
 
@@ -176,7 +179,7 @@ flutter test
 
 ## Status
 
-**Beta v0.2.0** — camera detection works best with:
+**Beta v0.2.1** — camera detection works best with:
 - Well-lit dartboards
 - Clear dart visibility (no blurry shots)
 - Consistent board position between calibration and throw photos
